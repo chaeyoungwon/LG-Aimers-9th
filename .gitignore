@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+data/
+output/
+dist/
+
+# Keep the current 40% submission only; exclude local experiment artifacts.
+*_candidate/
+submit_blend_optimal.zip
