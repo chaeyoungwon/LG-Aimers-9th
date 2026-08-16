@@ -1,4 +1,4 @@
-"""Train the monotone model and configure the scored 40% blend."""
+"""Train the monotone model and configure the optimal probability blend."""
 import json
 import lightgbm as lgb
 import pandas as pd
@@ -39,6 +39,6 @@ meta["ensemble_groups"] = [
         "bias": -0.038516,
     },
 ]
-meta["group_weights"] = [0.60, 0.40]
+meta["group_weights"] = [0.6090563539773146, 0.3909436460226854]
 with open(f"{root}/model/meta.json", "w", encoding="utf-8") as f:
     json.dump(meta, f, ensure_ascii=False, indent=2)
