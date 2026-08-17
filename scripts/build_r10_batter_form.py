@@ -1,4 +1,5 @@
 """Put the validated batter-form layer on the rebuilt R10 + pitcher-form ZIP."""
+import argparse
 import json
 import tempfile
 import zipfile
@@ -10,10 +11,17 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "artifacts" / "submit_r10_form_a28_rebuild.zip"
-OUT = ROOT / "artifacts" / "submit_r10_pitcher.zip"
 TRAIN = ROOT.parent / "open" / "data" / "train.csv"
 M = 50.0
-ALPHA = 0.11250648296393913
+DEFAULT_ALPHA = 0.11250648296393913
+REGISTERED = {
+    DEFAULT_ALPHA: "submit_r10_pitcher.zip",
+    # Rejected on leaderboard: 994.9143132327 (-12.5901 vs DEFAULT_ALPHA).
+    # Kept only to reproduce the failed experiment; do not submit again.
+    0.20: "submit_r10_pitcher_a20.zip",
+}
+OOF_GAIN = {DEFAULT_ALPHA: 25.67, 0.20: 32.98}
+LB_RESULT = {DEFAULT_ALPHA: 1007.50439, 0.20: 994.9143132327}
 
 
 def build_table(df):
@@ -31,16 +39,26 @@ def build_table(df):
             "s0": (s[idx] + y[idx]).tolist()}
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--alpha", type=float, default=DEFAULT_ALPHA,
+                        choices=sorted(REGISTERED))
+    args = parser.parse_args(argv)
+    alpha = args.alpha
+    out = ROOT / "artifacts" / REGISTERED[alpha]
     if not BASE.exists():
         raise FileNotFoundError(BASE)
     cols = ["batter_id", "asof_batter_n", "asof_batter_success_rate",
             "control_success"]
     train = pd.read_csv(TRAIN, encoding="utf-8-sig", usecols=cols)
-    spec = {"alpha": ALPHA, "m": M, "segment": "R", **build_table(train),
+    spec = {"alpha": alpha, "m": M, "segment": "R", **build_table(train),
             "source": {"base": BASE.name,
                        "coefficient_fit": "2022 and 2023 forward OOF only",
-                       "evaluation": "2024 forward OOF, +24.26 BSS-equivalent",
+                       "evaluation": (f"2024 team-proxy forward OOF, "
+                                      f"+{OOF_GAIN[alpha]:.2f} BSS-equivalent"),
+                       "leaderboard_bss": LB_RESULT[alpha],
+                       "decision": ("champion" if alpha == DEFAULT_ALPHA
+                                    else "rejected_overcorrection"),
                        "row_independent": True}}
 
     with tempfile.TemporaryDirectory(prefix="r10_batter_form_") as tmp:
@@ -75,12 +93,12 @@ def main():
             "    return apply_batter_form(preds, test, \"./model\")", 1)
         script_path.write_text(script, encoding="utf-8")
 
-        with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
             for path in sorted(tmp.rglob("*")):
                 if path.is_file() and "__pycache__" not in path.parts:
                     z.write(path, path.relative_to(tmp))
-    print(f"built {OUT}; batters={len(spec['batter_ids'])}; "
-          f"M={M}; alpha={ALPHA}")
+    print(f"built {out}; batters={len(spec['batter_ids'])}; "
+          f"M={M}; alpha={alpha}")
 
 
 if __name__ == "__main__":
