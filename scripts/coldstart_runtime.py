@@ -33,8 +33,12 @@ def apply_coldstart_expert(preds, test, model_dir):
     cold = test["game_type"].eq("R").to_numpy() & ~np.isin(pid, known)
     out = np.asarray(preds, dtype="float64").copy()
     if cold.any():
-        model = lgb.Booster(model_file=os.path.join(model_dir, spec["model_file"]))
-        expert = model.predict(_features(test.loc[cold], spec))
+        files = spec.get("model_files", [spec["model_file"]])
+        x = _features(test.loc[cold], spec)
+        expert = np.mean([
+            lgb.Booster(model_file=os.path.join(model_dir, filename)).predict(x)
+            for filename in files
+        ], axis=0)
         w = float(spec["weight"])
         out[cold] = (1.0 - w) * out[cold] + w * expert
     return np.clip(out, 0.0, 1.0)

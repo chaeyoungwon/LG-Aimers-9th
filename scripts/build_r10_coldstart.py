@@ -33,20 +33,24 @@ OOF_RESULT = {
 DROP = {"row_id", "control_success", "pitcher_id", "batter_id"}
 
 
-def train_expert(df, out_dir, weight):
+def train_expert(df, out_dir, weight, seeds):
     r = add_features(df[df.game_type.eq("R")].copy())
     features = [c for c in r.columns if c not in DROP]
     cats = [c for c in CAT_COLS if c in features]
     maps = build_category_maps(r, cats)
     enc = apply_category_maps(r, cats, maps)
-    params = dict(PARAMS, seed=42, num_leaves=31, min_data_in_leaf=800,
-                  num_threads=6)
-    ds = lgb.Dataset(enc[features], label=enc.control_success,
-                     categorical_feature=cats, free_raw_data=False)
-    model = lgb.train(params, ds, num_boost_round=236)
-    filename = "coldstart_lgbm.txt"
-    model.save_model(str(out_dir / filename))
-    return {"model_file": filename, "weight": weight,
+    files = []
+    for seed in seeds:
+        params = dict(PARAMS, seed=seed, num_leaves=31, min_data_in_leaf=800,
+                      num_threads=6)
+        ds = lgb.Dataset(enc[features], label=enc.control_success,
+                         categorical_feature=cats, free_raw_data=False)
+        model = lgb.train(params, ds, num_boost_round=236)
+        filename = ("coldstart_lgbm.txt" if len(seeds) == 1
+                    else f"coldstart_lgbm_s{seed}.txt")
+        model.save_model(str(out_dir / filename))
+        files.append(filename)
+    return {"model_file": files[0], "model_files": files, "weight": weight,
             "feature_cols": features, "cat_cols": cats, "category_maps": maps,
             "known_r_pitcher_ids": sorted(int(x) for x in r.pitcher_id.unique()),
             "source": {"train_rows": "train <= 2024, game_type=R only",
@@ -63,9 +67,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--weight", type=float, default=DEFAULT_WEIGHT,
                         choices=sorted(REGISTERED))
+    parser.add_argument("--seed-ensemble", action="store_true",
+                        help="average the preregistered seeds 42/43/44")
     args = parser.parse_args(argv)
     weight = args.weight
-    out = ROOT / "artifacts" / REGISTERED[weight]
+    seeds = (42, 43, 44) if args.seed_ensemble else (42,)
+    out = (ROOT / "artifacts" / "submit_r10w50_s3.zip"
+           if args.seed_ensemble else ROOT / "artifacts" / REGISTERED[weight])
+    if args.seed_ensemble and weight != DEFAULT_WEIGHT:
+        raise SystemExit("seed ensemble is registered only for weight=0.50")
     if not BASE.exists():
         raise FileNotFoundError(BASE)
     df = pd.read_csv(TRAIN, encoding="utf-8-sig")
@@ -73,7 +83,14 @@ def main(argv=None):
         tmp = Path(tmp)
         with zipfile.ZipFile(BASE) as z:
             z.extractall(tmp)
-        spec = train_expert(df, tmp / "model", weight)
+        spec = train_expert(df, tmp / "model", weight, seeds)
+        if args.seed_ensemble:
+            spec["source"].update({
+                "validation": ("seed3 vs seed42 at w50: pooled gain 1.391e-5, "
+                               "z=2.07"),
+                "leaderboard_bss": 1015.4525572004,
+                "decision": "rejected_seed_ensemble",
+            })
         (tmp / "model" / "coldstart_meta.json").write_text(
             json.dumps(spec, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         shutil.copyfile(ROOT / "scripts" / "coldstart_runtime.py",
@@ -95,7 +112,7 @@ def main(argv=None):
             for path in sorted(tmp.rglob("*")):
                 if path.is_file() and "__pycache__" not in path.parts:
                     z.write(path, path.relative_to(tmp))
-    print(f"built {out}; weight={weight}; known_R_pitchers="
+    print(f"built {out}; weight={weight}; seeds={seeds}; known_R_pitchers="
           f"{len(spec['known_r_pitcher_ids'])}")
 
 
