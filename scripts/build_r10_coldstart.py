@@ -1,4 +1,5 @@
 """Train and package the forward-validated cold-start expert over the 1007 model."""
+import argparse
 import json
 import shutil
 import sys
@@ -16,13 +17,23 @@ from src.train_base import (CAT_COLS, PARAMS, add_features,
 
 
 BASE = ROOT / "artifacts" / "submit_r10_pitcher.zip"
-OUT = ROOT / "artifacts" / "submit_r10_pitcher_w50.zip"
 TRAIN = ROOT.parent / "open" / "data" / "train.csv"
-WEIGHT = 0.50
+DEFAULT_WEIGHT = 0.50
+REGISTERED = {
+    0.50: "submit_r10_pitcher_w50.zip",
+    # Rejected on leaderboard: 1010.8164029281 (-5.2857 vs weight=0.50).
+    # Kept only to reproduce the failed experiment; do not submit again.
+    0.75: "submit_r10_pitcher_w75.zip",
+}
+LB_RESULT = {0.50: 1016.102132613, 0.75: 1010.8164029281}
+OOF_RESULT = {
+    0.50: "forward folds: 2/3 better; pooled gain 4.116e-4, z=12.51",
+    0.75: "forward folds: 2/3 better; pooled gain 5.219e-4, z=10.58",
+}
 DROP = {"row_id", "control_success", "pitcher_id", "batter_id"}
 
 
-def train_expert(df, out_dir):
+def train_expert(df, out_dir, weight):
     r = add_features(df[df.game_type.eq("R")].copy())
     features = [c for c in r.columns if c not in DROP]
     cats = [c for c in CAT_COLS if c in features]
@@ -35,17 +46,26 @@ def train_expert(df, out_dir):
     model = lgb.train(params, ds, num_boost_round=236)
     filename = "coldstart_lgbm.txt"
     model.save_model(str(out_dir / filename))
-    return {"model_file": filename, "weight": WEIGHT,
+    return {"model_file": filename, "weight": weight,
             "feature_cols": features, "cat_cols": cats, "category_maps": maps,
             "known_r_pitcher_ids": sorted(int(x) for x in r.pitcher_id.unique()),
             "source": {"train_rows": "train <= 2024, game_type=R only",
                        "ids": "pitcher_id and batter_id excluded from model",
                        "gate": "R pitcher absent from train-period R pitcher table",
-                       "validation": "forward folds: 2/3 better; pooled gain 4.116e-4, z=12.51",
+                       "validation": OOF_RESULT[weight],
+                       "leaderboard_bss": LB_RESULT[weight],
+                       "decision": ("champion" if weight == DEFAULT_WEIGHT
+                                    else "rejected_overmix"),
                        "row_independent": True}}
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--weight", type=float, default=DEFAULT_WEIGHT,
+                        choices=sorted(REGISTERED))
+    args = parser.parse_args(argv)
+    weight = args.weight
+    out = ROOT / "artifacts" / REGISTERED[weight]
     if not BASE.exists():
         raise FileNotFoundError(BASE)
     df = pd.read_csv(TRAIN, encoding="utf-8-sig")
@@ -53,7 +73,7 @@ def main():
         tmp = Path(tmp)
         with zipfile.ZipFile(BASE) as z:
             z.extractall(tmp)
-        spec = train_expert(df, tmp / "model")
+        spec = train_expert(df, tmp / "model", weight)
         (tmp / "model" / "coldstart_meta.json").write_text(
             json.dumps(spec, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         shutil.copyfile(ROOT / "scripts" / "coldstart_runtime.py",
@@ -71,11 +91,11 @@ def main():
         script = script.replace("return " + call,
             "preds = " + call + "\n    return apply_coldstart_expert(preds, test, \"./model\")", 1)
         script_path.write_text(script, encoding="utf-8")
-        with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
             for path in sorted(tmp.rglob("*")):
                 if path.is_file() and "__pycache__" not in path.parts:
                     z.write(path, path.relative_to(tmp))
-    print(f"built {OUT}; weight={WEIGHT}; known_R_pitchers="
+    print(f"built {out}; weight={weight}; known_R_pitchers="
           f"{len(spec['known_r_pitcher_ids'])}")
 
 
