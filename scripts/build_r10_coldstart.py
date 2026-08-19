@@ -18,15 +18,21 @@ from src.train_base import (CAT_COLS, PARAMS, add_features,
 
 BASE = ROOT / "artifacts" / "submit_r10_pitcher.zip"
 TRAIN = ROOT.parent / "open" / "data" / "train.csv"
-DEFAULT_WEIGHT = 0.50
+W50_WEIGHT = 0.50
+LB_QUADRATIC_WEIGHT = 0.4181944103545871
+DEFAULT_WEIGHT = LB_QUADRATIC_WEIGHT
 REGISTERED = {
+    LB_QUADRATIC_WEIGHT: "submit_r10_pitcher_w418194.zip",
     0.50: "submit_r10_pitcher_w50.zip",
     # Rejected on leaderboard: 1010.8164029281 (-5.2857 vs weight=0.50).
     # Kept only to reproduce the failed experiment; do not submit again.
     0.75: "submit_r10_pitcher_w75.zip",
 }
-LB_RESULT = {0.50: 1016.102132613, 0.75: 1010.8164029281}
+LB_RESULT = {LB_QUADRATIC_WEIGHT: 1016.4442212358, 0.50: 1016.102132613,
+             0.75: 1010.8164029281}
 OOF_RESULT = {
+    LB_QUADRATIC_WEIGHT: ("forward folds: 2/3 better; pooled gain ~3.62e-4; "
+                          "LB quadratic predicted BSS 1016.4442"),
     0.50: "forward folds: 2/3 better; pooled gain 4.116e-4, z=12.51",
     0.75: "forward folds: 2/3 better; pooled gain 5.219e-4, z=10.58",
 }
@@ -58,29 +64,32 @@ def train_expert(df, out_dir, weight, seeds):
                        "gate": "R pitcher absent from train-period R pitcher table",
                        "validation": OOF_RESULT[weight],
                        "leaderboard_bss": LB_RESULT[weight],
-                       "decision": ("champion" if weight == DEFAULT_WEIGHT
+                       "decision": ("champion" if weight == LB_QUADRATIC_WEIGHT else
+                                    "former_champion" if weight == W50_WEIGHT
                                     else "rejected_overmix"),
                        "row_independent": True}}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weight", type=float, default=DEFAULT_WEIGHT,
+    parser.add_argument("--weight", type=float, default=None,
                         choices=sorted(REGISTERED))
     parser.add_argument("--seed-ensemble", action="store_true",
                         help="average the preregistered seeds 42/43/44")
     parser.add_argument("--segment-boost", action="store_true",
                         help="use validated row-local runners2/hand11 w60 boost")
     args = parser.parse_args(argv)
-    weight = args.weight
+    weight = (W50_WEIGHT if (args.seed_ensemble or args.segment_boost)
+              and args.weight is None else
+              DEFAULT_WEIGHT if args.weight is None else args.weight)
     seeds = (42, 43, 44) if args.seed_ensemble else (42,)
     out = (ROOT / "artifacts" / "submit_r10_coldw60.zip"
            if args.segment_boost else
            ROOT / "artifacts" / "submit_r10w50_s3.zip"
            if args.seed_ensemble else ROOT / "artifacts" / REGISTERED[weight])
-    if args.seed_ensemble and weight != DEFAULT_WEIGHT:
+    if args.seed_ensemble and weight != W50_WEIGHT:
         raise SystemExit("seed ensemble is registered only for weight=0.50")
-    if args.segment_boost and (args.seed_ensemble or weight != DEFAULT_WEIGHT):
+    if args.segment_boost and (args.seed_ensemble or weight != W50_WEIGHT):
         raise SystemExit("segment boost requires the seed42 weight=0.50 champion")
     if not BASE.exists():
         raise FileNotFoundError(BASE)

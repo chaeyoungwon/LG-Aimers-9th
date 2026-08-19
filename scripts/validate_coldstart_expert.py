@@ -23,7 +23,7 @@ _spec.loader.exec_module(tl)
 
 SPLITS = ((2021, 2022), (2022, 2023), (2023, 2024))
 DROP = {"row_id", "control_success", "pitcher_id", "batter_id"}
-BLEND_WEIGHTS = (0.0, 0.25, 0.5, 0.75, 1.0)
+BLEND_WEIGHTS = (0.0, 0.25, 0.42, 0.5, 0.75, 1.0)
 SEEDS = (42, 43, 44)
 
 
