@@ -39,6 +39,13 @@ def apply_coldstart_expert(preds, test, model_dir):
             lgb.Booster(model_file=os.path.join(model_dir, filename)).predict(x)
             for filename in files
         ], axis=0)
-        w = float(spec["weight"])
+        w = np.full(cold.sum(), float(spec["weight"]), dtype="float64")
+        segment = spec.get("segment_boost")
+        if segment:
+            rows = test.loc[cold]
+            hit = (rows["num_runners_on"].eq(2).to_numpy()
+                   | (rows["pitcher_hand"].eq(1).to_numpy()
+                      & rows["batter_hand"].eq(1).to_numpy()))
+            w[hit] = float(segment["weight"])
         out[cold] = (1.0 - w) * out[cold] + w * expert
     return np.clip(out, 0.0, 1.0)

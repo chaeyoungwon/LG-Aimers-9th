@@ -69,13 +69,19 @@ def main(argv=None):
                         choices=sorted(REGISTERED))
     parser.add_argument("--seed-ensemble", action="store_true",
                         help="average the preregistered seeds 42/43/44")
+    parser.add_argument("--segment-boost", action="store_true",
+                        help="use validated row-local runners2/hand11 w60 boost")
     args = parser.parse_args(argv)
     weight = args.weight
     seeds = (42, 43, 44) if args.seed_ensemble else (42,)
-    out = (ROOT / "artifacts" / "submit_r10w50_s3.zip"
+    out = (ROOT / "artifacts" / "submit_r10_coldw60.zip"
+           if args.segment_boost else
+           ROOT / "artifacts" / "submit_r10w50_s3.zip"
            if args.seed_ensemble else ROOT / "artifacts" / REGISTERED[weight])
     if args.seed_ensemble and weight != DEFAULT_WEIGHT:
         raise SystemExit("seed ensemble is registered only for weight=0.50")
+    if args.segment_boost and (args.seed_ensemble or weight != DEFAULT_WEIGHT):
+        raise SystemExit("segment boost requires the seed42 weight=0.50 champion")
     if not BASE.exists():
         raise FileNotFoundError(BASE)
     df = pd.read_csv(TRAIN, encoding="utf-8-sig")
@@ -84,6 +90,18 @@ def main(argv=None):
         with zipfile.ZipFile(BASE) as z:
             z.extractall(tmp)
         spec = train_expert(df, tmp / "model", weight, seeds)
+        if args.segment_boost:
+            spec["segment_boost"] = {
+                "weight": 0.60,
+                "condition": "num_runners_on == 2 OR (pitcher_hand == 1 AND batter_hand == 1)",
+            }
+            spec["source"].update({
+                "validation": ("3/3 forward folds positive; pooled gain vs w50 "
+                               "1.953e-5, z=5.83"),
+                "leaderboard_bss": None,
+                "decision": "candidate_segment_boost",
+                "segment_inputs": "current row official columns only",
+            })
         if args.seed_ensemble:
             spec["source"].update({
                 "validation": ("seed3 vs seed42 at w50: pooled gain 1.391e-5, "
