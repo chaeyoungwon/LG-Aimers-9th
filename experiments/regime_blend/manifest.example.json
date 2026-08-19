@@ -1,0 +1,40 @@
+{
+  "members": ["hgb", "cat", "nn", "team", "team_nn"],
+  "blend_members": ["ours_stage", "team_stage"],
+  "anchor_weights": [0.4, 0.6],
+  "regimes": [
+    "game_type",
+    "hand_combo",
+    "count_state",
+    "game_type_count_bucket"
+  ],
+  "feature_columns": [
+    "game_type",
+    "balls_before",
+    "strikes_before",
+    "pitcher_hand",
+    "batter_hand",
+    "base_state",
+    "inning",
+    "top_bottom",
+    "asof_pitcher_n",
+    "pitcher_seen"
+  ],
+  "folds": [
+    {
+      "inner_season": 2021,
+      "validation_season": 2022,
+      "path": "fold_2021_2022.npz"
+    },
+    {
+      "inner_season": 2022,
+      "validation_season": 2023,
+      "path": "fold_2022_2023.npz"
+    },
+    {
+      "inner_season": 2023,
+      "validation_season": 2024,
+      "path": "fold_2023_2024.npz"
+    }
+  ]
+}
