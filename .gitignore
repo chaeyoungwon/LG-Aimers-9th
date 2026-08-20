@@ -5,7 +5,19 @@ __pycache__/
 data/
 output/
 dist/
+artifacts/regime_blend_oof/
+artifacts/regime_blend_results/
+artifacts/residual_discovery/
+artifacts/pitcher_form_shape/
+artifacts/trackman_incremental/
+artifacts/final_audit/
+artifacts/extratrees_complement/
+artifacts/extratrees_production/
+artifacts/extratrees_size_ablation/
+artifacts/et25_weight/
+artifacts/et25_upper_weight/
 
 # Keep the current 40% submission only; exclude local experiment artifacts.
 *_candidate/
 submit_blend_optimal.zip
+artifacts/

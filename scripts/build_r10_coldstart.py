@@ -78,21 +78,30 @@ def main(argv=None):
                         help="average the preregistered seeds 42/43/44")
     parser.add_argument("--segment-boost", action="store_true",
                         help="use validated row-local runners2/hand11 w60 boost")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="write the rebuilt ZIP to this path instead of the registered artifact",
+    )
     args = parser.parse_args(argv)
     weight = (W50_WEIGHT if (args.seed_ensemble or args.segment_boost)
               and args.weight is None else
               DEFAULT_WEIGHT if args.weight is None else args.weight)
     seeds = (42, 43, 44) if args.seed_ensemble else (42,)
-    out = (ROOT / "artifacts" / "submit_r10_coldw60.zip"
-           if args.segment_boost else
-           ROOT / "artifacts" / "submit_r10w50_s3.zip"
-           if args.seed_ensemble else ROOT / "artifacts" / REGISTERED[weight])
+    registered_out = (ROOT / "artifacts" / "submit_r10_coldw60.zip"
+                      if args.segment_boost else
+                      ROOT / "artifacts" / "submit_r10w50_s3.zip"
+                      if args.seed_ensemble else
+                      ROOT / "artifacts" / REGISTERED[weight])
+    out = args.output if args.output is not None else registered_out
     if args.seed_ensemble and weight != W50_WEIGHT:
         raise SystemExit("seed ensemble is registered only for weight=0.50")
     if args.segment_boost and (args.seed_ensemble or weight != W50_WEIGHT):
         raise SystemExit("segment boost requires the seed42 weight=0.50 champion")
     if not BASE.exists():
         raise FileNotFoundError(BASE)
+    out.parent.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(TRAIN, encoding="utf-8-sig")
     with tempfile.TemporaryDirectory(prefix="r10_coldstart_") as tmp:
         tmp = Path(tmp)

@@ -27,8 +27,19 @@ cutoff 이하 정규시즌 투수 ID 집합만으로 미리 만들어야 한다.
 ## 실행
 
 ```bash
+python3 -m pip install -r experiments/regime_blend/requirements-oof.txt
+
+python3 scripts/build_regime_blend_oof.py \
+  --train /Users/wooh/Documents/dev/open/data/train.csv \
+  --output artifacts/regime_blend_oof
+
 python3 scripts/run_regime_blend.py \
   --manifest artifacts/regime_blend_oof/manifest.json \
+  --output-dir artifacts/regime_blend_results
+
+python3 scripts/report_regime_blend_weights.py \
+  --manifest artifacts/regime_blend_oof/manifest.json \
+  --results artifacts/regime_blend_results/regime_blend_results.json \
   --output-dir artifacts/regime_blend_results
 ```
 
@@ -36,13 +47,22 @@ python3 scripts/run_regime_blend.py \
 
 - `member_diagnostics.json`, `member_diagnostics.md`
 - `regime_blend_results.json`, `regime_blend_results.md`
+- `regime_weight_diagnostics.json`, `regime_weight_diagnostics.md`
 
 기본 grid는 `rho=(0, 1e-6, 1e-5)`, `tau=(2000, 10000, 50000)`이다. 이는 사전
 등록된 작은 grid이며 test 분포를 보고 바꾸지 않는다.
 
 ## 현재 실행 상태
 
-2026-08-19 현재 이 checkout에는 공식 train 데이터, champion member OOF,
-`../LG-AIMERS_9TH`, `artifacts/validation_hetero/exp23_cache`가 없다. 따라서 실제
-fold 수치와 채택 후보는 아직 생성하지 않았다. synthetic unit test 결과를 성능
-근거로 사용하지 않는다.
+2026-08-20 공식 `train.csv`에서 2021~2024 forward prediction을 다시 생성해
+`artifacts/regime_blend_oof/`에 저장했다. 과거 OOF/cache는 발견되지 않아 `team`과
+`team_nn`은 현재 source-exact recipe로, `hgb`/`cat`/`nn`은 champion 직렬화
+메타에서 복구한 recipe로 재학습했다. 2024 team Platt 진단 계수의 최대 절대 오차는
+`1.797e-4`였고 parity gate를 통과했다.
+
+사전 등록 grid 39개를 실행한 결과 채택 기준을 통과한 후보는 0개다. 가장 높은 pooled
+gain은 `count_state,rho=1e-5,tau=10000`의 `+8.685e-5`였지만 2022 fold에서
+`-1.254e-4`로 악화했고, fold별 global `ours_stage` 가중치도
+`0.102 -> 0.455 -> 1.000`으로 불안정했다. 따라서 production 제출물에는 반영하지
+않는다. 상세 수치와 재현 한계는
+`docs/experiments/2026-08-20-regime-blend-oof-results.md`에 기록한다.

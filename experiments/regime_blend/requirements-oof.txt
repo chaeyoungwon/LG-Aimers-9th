@@ -1,0 +1,8 @@
+# Environment used for the 2026-08-20 OOF reconstruction (Python 3.12).
+catboost==1.2.8
+joblib==1.5.3
+lightgbm==4.6.0
+numpy==1.26.4
+pandas==2.3.3
+scikit-learn==1.8.0
+torch==2.8.0
