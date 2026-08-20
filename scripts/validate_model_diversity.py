@@ -23,6 +23,7 @@ from typing import Mapping
 
 import numpy as np
 import pandas as pd
+import rtdl_revisiting_models as rtdl
 import tabm
 import torch
 from pandas.api.types import is_object_dtype
@@ -92,6 +93,7 @@ BLEND_WEIGHTS = (0.005, 0.010, 0.020, 0.050)
 CURRENT_ET25_WEIGHT = 0.020
 XGB_CACHE_VERSION = f"model-diversity-xgb-hist-v1-xgb{xgboost.__version__}"
 TABM_CACHE_VERSION = f"model-diversity-tabm-small-v1-tabm{tabm.__version__}"
+FT_CACHE_VERSION = f"model-diversity-ft-small-v1-rtdl{rtdl.__version__}"
 
 XGB_RECIPE = {
     "n_estimators": 600,
@@ -118,6 +120,15 @@ TABM_RECIPE = {
     "batch_size": 4096,
     "eval_batch_size": 16384,
     "epochs": 8,
+    "random_state": 42,
+}
+FT_RECIPE = {
+    "n_blocks": 2,
+    "batch_size": 2048,
+    "eval_batch_size": 4096,
+    "epochs": 6,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.00001,
     "random_state": 42,
 }
 
@@ -188,6 +199,10 @@ def cache_path(output: Path, season: int) -> Path:
 
 def tabm_cache_path(output: Path, season: int) -> Path:
     return output / "cache" / f"tabm_{season}.npz"
+
+
+def ft_cache_path(output: Path, season: int) -> Path:
+    return output / "cache" / f"ft_transformer_{season}.npz"
 
 
 def validate_raw_contract(features: pd.DataFrame, champion_meta: Mapping) -> None:
@@ -376,6 +391,113 @@ def fit_tabm_fold(
     return prediction, fit_seconds, predict_seconds, feature_columns, epoch_losses, device
 
 
+def make_ft_model(encoding: TabMEncoding):
+    cardinalities = [
+        len(encoding.categorical_levels[column]) + 1
+        for column in encoding.categorical_columns
+    ]
+    defaults = rtdl.FTTransformer.get_default_kwargs(
+        n_blocks=FT_RECIPE["n_blocks"]
+    )
+    return rtdl.FTTransformer(
+        n_cont_features=len(encoding.numeric_columns),
+        cat_cardinalities=cardinalities,
+        d_out=1,
+        **defaults,
+    )
+
+
+def _ft_logits(model, numeric: np.ndarray, categorical: np.ndarray, indices, device):
+    x_cont = torch.as_tensor(numeric[indices], dtype=torch.float32, device=device)
+    x_cat = torch.as_tensor(categorical[indices], dtype=torch.long, device=device)
+    return model(x_cont, x_cat).squeeze(-1)
+
+
+def fit_ft_fold(
+    training: pd.DataFrame,
+    validation: pd.DataFrame,
+    champion_meta: Mapping,
+) -> tuple[np.ndarray, float, float, list[str], list[float], str, int]:
+    train_features = build_hgb52_features(training, champion_meta["cat_levels"])
+    validation_features = build_hgb52_features(validation, champion_meta["cat_levels"])
+    validate_raw_contract(train_features, champion_meta)
+    validate_raw_contract(validation_features, champion_meta)
+    encoding = fit_tabm_encoding(train_features)
+    x_train_num, x_train_cat = transform_tabm(train_features, encoding)
+    x_validation_num, x_validation_cat = transform_tabm(validation_features, encoding)
+    y_train = training[TARGET].to_numpy(dtype="float32")
+    feature_columns = list(train_features.columns)
+    del train_features, validation_features
+    gc.collect()
+
+    seed = FT_RECIPE["random_state"]
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    device = tabm_device()
+    model = make_ft_model(encoding).to(device)
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
+    optimizer = model.make_default_optimizer()
+    rng = np.random.default_rng(seed)
+    batch_size = FT_RECIPE["batch_size"]
+    epoch_losses = []
+    started = time.monotonic()
+    for epoch in range(FT_RECIPE["epochs"]):
+        model.train()
+        loss_sum = 0.0
+        seen = 0
+        permutation = rng.permutation(len(y_train))
+        for start in range(0, len(permutation), batch_size):
+            indices = permutation[start : start + batch_size]
+            logits = _ft_logits(model, x_train_num, x_train_cat, indices, device)
+            target = torch.as_tensor(
+                y_train[indices], dtype=torch.float32, device=device
+            )
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                logits, target
+            )
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+            loss_sum += float(loss.detach().cpu()) * len(indices)
+            seen += len(indices)
+        epoch_loss = loss_sum / seen
+        epoch_losses.append(epoch_loss)
+        print(
+            f"  FT epoch {epoch + 1}/{FT_RECIPE['epochs']} loss={epoch_loss:.6f}",
+            flush=True,
+        )
+    fit_seconds = time.monotonic() - started
+
+    model.eval()
+    predictions = []
+    started = time.monotonic()
+    eval_batch_size = FT_RECIPE["eval_batch_size"]
+    with torch.inference_mode():
+        for start in range(0, len(x_validation_num), eval_batch_size):
+            indices = slice(start, min(start + eval_batch_size, len(x_validation_num)))
+            logits = _ft_logits(
+                model, x_validation_num, x_validation_cat, indices, device
+            )
+            predictions.append(torch.sigmoid(logits).cpu().numpy())
+    predict_seconds = time.monotonic() - started
+    prediction = np.concatenate(predictions).astype("float64")
+    del model, optimizer, x_train_num, x_train_cat, x_validation_num, x_validation_cat
+    gc.collect()
+    if device == "mps":
+        torch.mps.empty_cache()
+    if not np.isfinite(prediction).all() or np.any((prediction < 0.0) | (prediction > 1.0)):
+        raise ValueError("FT-Transformer produced invalid probability")
+    return (
+        prediction,
+        fit_seconds,
+        predict_seconds,
+        feature_columns,
+        epoch_losses,
+        device,
+        parameter_count,
+    )
+
+
 def fit_xgb_fold(
     training: pd.DataFrame,
     validation: pd.DataFrame,
@@ -476,6 +598,47 @@ def run_tabm_worker(args: argparse.Namespace) -> None:
     )
 
 
+def run_ft_worker(args: argparse.Namespace) -> None:
+    if sha256_path(CHAMPION) != CHAMPION_SHA256:
+        raise SystemExit("immutable champion checksum mismatch")
+    frame = pd.read_csv(args.train)
+    training, validation = temporal_split(frame, args.worker_ft_season)
+    champion_meta = load_champion_meta(CHAMPION)
+    print(
+        f"[FT-Transformer {args.worker_ft_season}] {len(training):,} -> "
+        f"{len(validation):,}, device={tabm_device()}",
+        flush=True,
+    )
+    (
+        prediction,
+        fit_seconds,
+        predict_seconds,
+        columns,
+        losses,
+        device,
+        parameter_count,
+    ) = fit_ft_fold(training, validation, champion_meta)
+    target = validation[TARGET].to_numpy(dtype="float64")
+    save_npz_atomic(
+        ft_cache_path(args.output, args.worker_ft_season),
+        cache_version=np.asarray(FT_CACHE_VERSION),
+        season=np.asarray(args.worker_ft_season, dtype="int16"),
+        target_sha256=np.asarray(array_sha256(target)),
+        prediction=prediction,
+        fit_seconds=np.asarray(fit_seconds),
+        predict_seconds=np.asarray(predict_seconds),
+        feature_columns=np.asarray(columns),
+        epoch_losses=np.asarray(losses, dtype="float64"),
+        device=np.asarray(device),
+        parameter_count=np.asarray(parameter_count, dtype="int64"),
+    )
+    print(
+        f"[FT-Transformer {args.worker_ft_season}] fit={fit_seconds:.1f}s "
+        f"predict={predict_seconds:.1f}s",
+        flush=True,
+    )
+
+
 def validate_cache(path: Path, season: int, target: np.ndarray) -> None:
     payload = load_npz(path)
     expected = (XGB_CACHE_VERSION, season, array_sha256(target))
@@ -525,6 +688,25 @@ def ensure_tabm_caches(args: argparse.Namespace) -> None:
             "--output",
             str(args.output),
             "--worker-tabm-season",
+            str(season),
+        ]
+        subprocess.run(command, check=True)
+
+
+def ensure_ft_caches(args: argparse.Namespace) -> None:
+    for season in VALIDATION_SEASONS:
+        path = ft_cache_path(args.output, season)
+        if path.is_file() and not args.force:
+            print(f"[FT-Transformer {season}] cached", flush=True)
+            continue
+        command = [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--train",
+            str(args.train),
+            "--output",
+            str(args.output),
+            "--worker-ft-season",
             str(season),
         ]
         subprocess.run(command, check=True)
@@ -598,6 +780,33 @@ def load_tabm_prediction(
         tuple(str(value) for value in payload["feature_columns"]),
         payload["epoch_losses"].astype("float64").tolist(),
         str(payload["device"].item()),
+    )
+
+
+def load_ft_prediction(
+    output: Path, season: int, target: np.ndarray
+) -> tuple[np.ndarray, float, float, tuple[str, ...], list[float], str, int]:
+    path = ft_cache_path(output, season)
+    payload = load_npz(path)
+    expected = (FT_CACHE_VERSION, season, array_sha256(target))
+    actual = (
+        str(payload["cache_version"].item()),
+        int(payload["season"].item()),
+        str(payload["target_sha256"].item()),
+    )
+    if actual != expected:
+        raise ValueError(f"stale FT cache {path}: {actual} != {expected}")
+    prediction = payload["prediction"].astype("float64")
+    if prediction.shape != target.shape:
+        raise ValueError(f"FT prediction length mismatch for {season}")
+    return (
+        prediction,
+        float(payload["fit_seconds"].item()),
+        float(payload["predict_seconds"].item()),
+        tuple(str(value) for value in payload["feature_columns"]),
+        payload["epoch_losses"].astype("float64").tolist(),
+        str(payload["device"].item()),
+        int(payload["parameter_count"].item()),
     )
 
 
@@ -826,6 +1035,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--worker-xgb-season", type=int, choices=VALIDATION_SEASONS)
     parser.add_argument("--worker-tabm-season", type=int, choices=VALIDATION_SEASONS)
+    parser.add_argument("--worker-ft-season", type=int, choices=VALIDATION_SEASONS)
     return parser.parse_args()
 
 
@@ -837,6 +1047,9 @@ def main() -> None:
         return
     if args.worker_tabm_season:
         run_tabm_worker(args)
+        return
+    if args.worker_ft_season:
+        run_ft_worker(args)
         return
 
     champion_sha_before = sha256_path(CHAMPION)
@@ -894,6 +1107,9 @@ def main() -> None:
     tabm_rows = []
     tabm_gate = None
     tabm_training = []
+    ft_rows = []
+    ft_gate = None
+    ft_training = []
     active_learner = None
     active_folds = None
 
@@ -959,6 +1175,74 @@ def main() -> None:
             active_learner = "tabm"
             active_folds = tabm_folds
 
+    if tabm_gate is not None and not tabm_gate["passed"]:
+        ensure_ft_caches(args)
+        ft_folds = {season: {**folds[season]} for season in VALIDATION_SEASONS}
+        ft_contract = None
+        for season in VALIDATION_SEASONS:
+            fold = ft_folds[season]
+            (
+                model,
+                fit_seconds,
+                predict_seconds,
+                columns,
+                losses,
+                device,
+                parameter_count,
+            ) = load_ft_prediction(args.output, season, np.asarray(fold["target"]))
+            if ft_contract is None:
+                ft_contract = columns
+            elif columns != ft_contract:
+                raise ValueError("FT-Transformer feature contract varies by fold")
+            if columns != feature_contract:
+                raise ValueError(
+                    "FT-Transformer and XGBoost do not share the exact HGB-52 contract"
+                )
+            fold["model"] = model
+            ft_rows.append(
+                diagnostic_row(
+                    "ft_transformer",
+                    season,
+                    np.asarray(fold["target"]),
+                    model,
+                    np.asarray(fold["current_champion"]),
+                    np.asarray(fold["et25"]),
+                    fit_seconds,
+                    predict_seconds,
+                )
+            )
+            ft_training.append(
+                {
+                    "validation_season": season,
+                    "device": device,
+                    "parameter_count": parameter_count,
+                    "epoch_losses": losses,
+                }
+            )
+        ft_rows.append(
+            diagnostic_row(
+                "ft_transformer",
+                "pooled",
+                pooled_array(ft_folds, "target"),
+                pooled_array(ft_folds, "model"),
+                pooled_array(ft_folds, "current_champion"),
+                pooled_array(ft_folds, "et25"),
+                sum(row["fit_seconds"] for row in ft_rows),
+                sum(row["predict_seconds"] for row in ft_rows),
+            )
+        )
+        ft_results = pd.DataFrame(ft_rows, columns=RESULT_COLUMNS)
+        ft_results.to_csv(args.output / "ft_transformer_results.csv", index=False)
+        ft_gate = complementarity_gate(ft_rows)
+        ft_complement = ft_results.loc[:, RESULT_COLUMNS[:10]].copy()
+        ft_complement["path_a_passed"] = ft_gate["path_a_passed"]
+        ft_complement["path_b_passed"] = ft_gate["path_b_passed"]
+        ft_complement["complementarity_gate_passed"] = ft_gate["passed"]
+        complement = pd.concat([complement, ft_complement], ignore_index=True)
+        if ft_gate["passed"]:
+            active_learner = "ft_transformer"
+            active_folds = ft_folds
+
     complement.to_csv(args.output / "complementarity.csv", index=False)
     if active_learner is not None and active_folds is not None:
         blends, blend_decisions = build_blends(active_learner, active_folds)
@@ -999,7 +1283,13 @@ def main() -> None:
             "columns": list(feature_contract or ()),
             "feature_count": len(feature_contract or ()),
             "new_features_added": False,
-            "preprocessing": "cutoff-train-only ordinal categories and numeric medians",
+            "preprocessing": {
+                "xgboost": "cutoff-train-only ordinal categories and numeric medians",
+                "tabm_and_ft_transformer": (
+                    "cutoff-train-only category vocabulary, numeric medians, and z-score"
+                ),
+                "validation_statistics_used": False,
+            },
         },
         "xgboost": {
             "version": xgboost.__version__,
@@ -1015,7 +1305,7 @@ def main() -> None:
             "tabm_required": not gate["passed"],
             "tabm_evaluated": bool(tabm_rows),
             "ft_transformer_required": bool(tabm_gate is not None and not tabm_gate["passed"]),
-            "ft_transformer_evaluated": False,
+            "ft_transformer_evaluated": bool(ft_rows),
         },
         "tabm": {
             "version": tabm.__version__,
@@ -1026,6 +1316,25 @@ def main() -> None:
             "training": tabm_training,
             "complementarity_gate": tabm_gate,
             "blend_decisions": blend_decisions if active_learner == "tabm" else [],
+        },
+        "ft_transformer": {
+            "version": rtdl.__version__,
+            "architecture_audit": {
+                "existing_ours_nn": "player-embedding + two-layer ReLU MLP",
+                "candidate": "per-feature token embeddings + multi-head self-attention + CLS token",
+                "effectively_identical": False,
+            },
+            "recipe": FT_RECIPE,
+            "official_default_backbone": rtdl.FTTransformer.get_default_kwargs(
+                n_blocks=FT_RECIPE["n_blocks"]
+            ),
+            "hyperparameter_search": False,
+            "results": ft_rows,
+            "training": ft_training,
+            "complementarity_gate": ft_gate,
+            "blend_decisions": blend_decisions
+            if active_learner == "ft_transformer"
+            else [],
         },
         "selected_candidate": selected,
         "production": {
@@ -1045,9 +1354,9 @@ def main() -> None:
     print("XGBoost gate", json.dumps(gate, indent=2), flush=True)
     if tabm_gate is not None:
         print("TabM gate", json.dumps(tabm_gate, indent=2), flush=True)
+    if ft_gate is not None:
+        print("FT-Transformer gate", json.dumps(ft_gate, indent=2), flush=True)
     print(verdict, flush=True)
-    if tabm_gate is not None and not tabm_gate["passed"]:
-        print("Stage G required: audit and evaluate FT-Transformer next", flush=True)
 
 
 if __name__ == "__main__":

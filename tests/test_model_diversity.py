@@ -7,12 +7,14 @@ from scripts.validate_model_diversity import (
     BLEND_WEIGHTS,
     CATASTROPHIC_STANDALONE_FLOOR,
     CLEAR_STANDALONE_GAIN,
+    FT_RECIPE,
     MAX_DIVERSITY_CORRELATION,
     MIN_CHAMPION_TOP10_WIN_RATE,
     TABM_RECIPE,
     XGB_RECIPE,
     complementarity_gate,
     fit_tabm_encoding,
+    make_ft_model,
     make_tabm_model,
     make_xgb,
     transform_tabm,
@@ -131,6 +133,29 @@ class ModelDiversityTest(unittest.TestCase):
         self.assertTrue(np.isfinite(numeric).all())
         self.assertEqual(categorical[0, 0], 2)
         self.assertEqual(categorical[1, 0], 0)
+
+    def test_ft_transformer_uses_one_small_official_default_backbone(self):
+        self.assertEqual(
+            FT_RECIPE,
+            {
+                "n_blocks": 2,
+                "batch_size": 2048,
+                "eval_batch_size": 4096,
+                "epochs": 6,
+                "learning_rate": 0.0001,
+                "weight_decay": 0.00001,
+                "random_state": 42,
+            },
+        )
+        frame = pd.DataFrame(
+            {
+                "numeric": [1.0, 2.0],
+                "category": pd.Categorical(["a", "b"]),
+            }
+        )
+        model = make_ft_model(fit_tabm_encoding(frame))
+        self.assertEqual(len(model.backbone.blocks), 2)
+        self.assertIsNotNone(model.backbone.blocks[0]["attention"])
 
 
 if __name__ == "__main__":
