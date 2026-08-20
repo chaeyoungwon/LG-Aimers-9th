@@ -9,3 +9,6 @@ dist/
 # Keep the current 40% submission only; exclude local experiment artifacts.
 *_candidate/
 submit_blend_optimal.zip
+
+# 백테스트 예측 캐시 — 재생성 가능한 파생 데이터 (40MB+)
+artifacts/backtest/*.npz
