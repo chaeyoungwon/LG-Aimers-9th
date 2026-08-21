@@ -16,6 +16,19 @@ LOFO 검증이 필요 없는 유일한 항목이다.
 검증된 원본이 항상 평균에 포함되므로 되돌릴 것이 없다.
 
 멤버별 시드 분산 (예측 표준편차 대비): hgb 11.7% · cat 9.0% · team 5.0%.
+
+**hgb 는 제외한다 — 실제 제출 실패로 배운 것.**
+hgb 는 joblib/numpy **pickle** 로 저장되는데, fitted 모델이 `_feature_subsample_rng`
+(numpy Generator) 를 품는다. 로컬 numpy 2.x 로 pickle 하면 BitGenerator 가 클래스로
+직렬화되고, 평가 서버의 numpy 1.26.4 는 문자열을 기대해서
+`ValueError: <class 'numpy.random._pcg64.PCG64'> is not a known BitGenerator module`
+로 죽는다. 같은 numpy 로 저장하고 읽는 로컬 리허설은 이걸 절대 못 잡는다.
+
+cat(`.cbm` native) 과 team(`model_to_string` 텍스트) 은 pickle 이 아니라서 안전하다.
+그리고 hgb 를 빼도 이득이 거의 안 준다 — 실측 +3.8 -> +3.5.
+
+**가드 2개**로 재발을 막는다: (1) 직렬화에 관여하는 라이브러리 버전을
+`requirements.txt` 와 대조, (2) 새 `.pkl` 이 생기면 중단.
 """
 import argparse
 import json
@@ -24,7 +37,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-import joblib
+
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -35,7 +48,7 @@ from src.train_base import (PARAMS, add_features, apply_category_maps,
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "artifacts" / "submit_corrections.zip"
-OUT = ROOT / "artifacts" / "submit_seed_ensemble.zip"
+OUT = ROOT / "artifacts" / "submit_seed_ensemble_v2.zip"
 TRAIN = ROOT / "data" / "train.csv"
 EXTRA = [101, 202]          # 원본에 더할 시드 2개
 TEAM_OFFSETS = [100, 200]   # team 4종은 각자의 시드에 오프셋을 더한다
@@ -47,15 +60,30 @@ NEG = {"asof_pitcher_reverse_rate", "asof_pitcher_middle_rate", "asof_pitcher_ba
        "asof_pitcher_prev5_game_middle_rate", "asof_batter_middle_rate"}
 
 
-def train_hgb(ch, df, y, seed, path):
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    X = ch.frame(df, "hgb")
-    m = HistGradientBoostingClassifier(
-        categorical_features="from_dtype", random_state=seed,
-        **ch.members["hgb"]["model_params"])
-    m.fit(X, y)
-    joblib.dump(m, path)
-    return float(m.predict_proba(X.head(2000))[:, 1].mean())
+def check_versions(work):
+    """직렬화에 관여하는 라이브러리가 평가 서버와 같은 버전인지 확인한다.
+
+    numpy 는 제외한다 — pickle 을 만들지 않는 한 산출물 형식에 관여하지 않고,
+    1.26.4 는 Python 3.13 에 설치되지 않는다.
+    """
+    import importlib.metadata as md
+    want = {}
+    for line in (work / "requirements.txt").read_text().splitlines():
+        if "==" in line:
+            k, v = line.strip().split("==")
+            want[k] = v
+    bad = []
+    for pkg in ("lightgbm", "catboost", "pandas", "scikit-learn"):
+        if pkg not in want:
+            continue
+        got = md.version(pkg)
+        print(f"  {pkg:<14} 요구 {want[pkg]:<9} 로컬 {got:<9} "
+              f"{'ok' if got == want[pkg] else '불일치'}")
+        if got != want[pkg]:
+            bad.append(f"{pkg}: 요구 {want[pkg]}, 로컬 {got}")
+    if bad:
+        raise SystemExit("라이브러리 버전 불일치 — 산출물이 평가 서버에서 로드되지 "
+                         "않을 수 있다:\n  " + "\n  ".join(bad))
 
 
 def train_cat(ch, df, y, seed, path):
@@ -121,16 +149,15 @@ def main(argv=None):
         work = Path(tmp)
         with zipfile.ZipFile(BASE) as z:
             z.extractall(work)
+        print("라이브러리 버전 대조:")
+        check_versions(work)
+        before_pkl = {p.name for p in (work / "model").glob("*.pkl")}
+
         ch = Champion(BASE, workdir=str(work / "_spec"))
         meta = json.loads((work / "model" / "meta.json").read_text("utf-8"))
         members = {m["name"]: m for m in meta["members"]}
 
         for i, seed in enumerate(EXTRA, start=1):
-            f = f"hgb_model_s{i}.pkl"
-            mp = train_hgb(ch, df, y, seed, work / "model" / f)
-            members["hgb"]["model_files"].append(f)
-            print(f"  hgb seed={seed} -> {f}  (probe mean {mp:.4f})", flush=True)
-
             f = f"cat_model_s{i}.cbm"
             mp = train_cat(ch, df, y, seed, work / "model" / f)
             members["cat"]["model_files"].append(f)
@@ -143,19 +170,28 @@ def main(argv=None):
             print(f"  team offset={off} -> {f}  ({n} boosters)", flush=True)
 
         meta["seed_ensemble"] = {
-            "members": ["hgb", "cat", "team"],
+            "members": ["cat", "team"],
             "extra_seeds": EXTRA, "team_offsets": TEAM_OFFSETS,
             "rationale": ("Brier is convex: ensemble error = mean individual error "
                           "- mean disagreement. Structural, not tuned."),
             "backtest": ("R-segment mean over 3 folds: single-seed expectation 702.4, "
-                         "trees-averaged 706.3 (+3.8); NN-averaged 703.4; all-5 704.8"),
+                         "cat+team 705.9 (+3.5); with hgb 706.3 (+3.8)"),
+            "hgb_excluded": ("joblib/numpy pickle carries a numpy Generator "
+                             "(_feature_subsample_rng); local numpy 2.x pickles it in a "
+                             "form the eval server's numpy 1.26.4 cannot read. "
+                             "Gain from including it is only +0.3."),
         }
         (work / "model" / "meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, separators=(",", ":")),
             encoding="utf-8")
         shutil.rmtree(work / "_spec", ignore_errors=True)
 
-        for name in ("hgb", "cat", "team"):
+        after_pkl = {p.name for p in (work / "model").glob("*.pkl")}
+        if after_pkl != before_pkl:
+            raise SystemExit(f"새 pickle 이 생겼다 — 평가 서버 numpy 와 형식이 "
+                             f"어긋날 수 있다: {sorted(after_pkl - before_pkl)}")
+        print(f"  pickle 파일 변화 없음 ✓ ({sorted(before_pkl)})")
+        for name in ("cat", "team"):
             print(f"  {name}.model_files = {members[name]['model_files']}")
 
         with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
