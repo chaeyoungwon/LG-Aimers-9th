@@ -138,6 +138,79 @@ def add_features_by_season(df, prefix="cur_"):
     return pd.concat(parts).reindex(df.index)
 
 
+def window_features(df, windows=(1, 2)):
+    """직전 N개 시즌만의 성적 — `(선수, 시즌)` 조회로 끝나는 순수 상수 피처.
+
+    `asof_*` 는 커리어 누적이라 2019년을 2024년과 똑같이 섞는다. 시즌 경계 누적값
+    두 개를 빼면 그 사이 구간만의 성적이 나온다:
+
+        prev{N} = (c0[Y] - c0[Y-N]) / (n0[Y] - n0[Y-N])
+
+    창을 나눠 주면 "얼마나 최근을 믿을지"를 모델이 직접 학습할 수 있다.
+    `cur_*` 와 달리 행의 `asof` 값조차 쓰지 않으므로 표본 크기와 무관하게 안정적이다.
+
+    **측정 결과: 기각.** 3시드 비교에서 `cur_*` 위에 얹으면 세 폴드 전부 악화된다
+    (-3.6 / -12.4 / -12.1, 평균 -9.4, z=-1.98). 커리어 누적(`asof_*`)이 장기를,
+    `cur_*` 가 당해 시즌을 이미 잡고 있어 그 사이 창은 잉여였다. 재시도 전에 이
+    숫자를 볼 것.
+
+    **규칙 준수.** 시즌 Y 의 행에는 시즌 < Y 의 경계값만 들어간다. 평가(2025)는
+    2019~2024 경계를 쓰고, 각 행은 자기 `pitcher_id`/`batter_id`/`season` 으로
+    조회할 뿐이다.
+    """
+    seasons = sorted(df.season.unique())
+    bounds = {}
+    for i, s in enumerate(seasons):
+        prior = seasons[:i]
+        bounds[s] = build_boundary(df, prior) if prior else None
+
+    out = {}
+    for name, idcol, ncol, rates in GROUPS:
+        for w in windows:
+            out[f"prev{w}_{name}_n"] = np.full(len(df), np.nan)
+            for k in rates:
+                out[f"prev{w}_{name}_{k}"] = np.full(len(df), np.nan)
+
+    pos_of = {s: (df.season == s).to_numpy() for s in seasons}
+    for i, s in enumerate(seasons):
+        for w in windows:
+            j = i - w
+            hi, lo = bounds[s], (bounds[seasons[j]] if j >= 0 else None)
+            if hi is None:
+                continue
+            m = pos_of[s]
+            for name, idcol, ncol, rates in GROUPS:
+                th = hi[name]
+                if th is None:
+                    continue
+                oh = np.argsort(th["ids"])
+                ids_h = th["ids"][oh]
+                key = pd.to_numeric(df.loc[m, idcol], errors="coerce").to_numpy(float)
+                k_ = np.where(np.isfinite(key), key, -1).astype("int64")
+                ph = np.searchsorted(ids_h, k_)
+                ch = np.clip(ph, 0, len(ids_h) - 1)
+                seen = (ph < len(ids_h)) & (ids_h[ch] == k_)
+                nhi = np.where(seen, th["n0"][oh][ch], np.nan)
+                nlo = np.zeros(len(k_))
+                clo = {kk: np.zeros(len(k_)) for kk in rates}
+                if lo is not None and lo[name] is not None:
+                    tl = lo[name]
+                    ol = np.argsort(tl["ids"])
+                    ids_l = tl["ids"][ol]
+                    pl = np.searchsorted(ids_l, k_)
+                    cl = np.clip(pl, 0, len(ids_l) - 1)
+                    sl = (pl < len(ids_l)) & (ids_l[cl] == k_)
+                    nlo = np.where(sl, tl["n0"][ol][cl], 0.0)
+                    clo = {kk: np.where(sl, v[ol][cl], 0.0) for kk, v in tl["c0"].items()}
+                span = nhi - nlo
+                ok = seen & np.isfinite(span) & (span > 0)
+                out[f"prev{w}_{name}_n"][m] = np.where(ok, span, np.nan)
+                for kk in rates:
+                    v = (np.where(seen, th["c0"][kk][oh][ch], np.nan) - clo[kk]) / span
+                    out[f"prev{w}_{name}_{kk}"][m] = np.where(ok & np.isfinite(v), v, np.nan)
+    return pd.DataFrame(out, index=df.index)
+
+
 def feature_names(prefix="cur_"):
     names = []
     for name, _, _, rates in GROUPS:
