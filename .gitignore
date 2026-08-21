@@ -12,3 +12,6 @@ submit_blend_optimal.zip
 
 # 백테스트 예측 캐시 — 재생성 가능한 파생 데이터 (40MB+)
 artifacts/backtest/*.npz
+
+# Python 3.12 환경 — 평가 서버(numpy 1.26.4)와 같은 pickle 을 만들기 위한 것
+.venv312/
