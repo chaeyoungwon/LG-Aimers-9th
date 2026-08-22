@@ -1,0 +1,38 @@
+{
+  "feature": "season_state_minus_career",
+  "formula": "10 current-season rates minus their career asof rates",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "coverage": 0.8227052956696939,
+  "criterion": "R three folds positive and each delta > 2sigma",
+  "accepted": false,
+  "folds": [
+    {
+      "season": 2022,
+      "bss_a": 639.6545398914544,
+      "bss_b": 642.1786743433522,
+      "delta": 2.524134451897794,
+      "two_sigma": 8.893174902228633,
+      "clears_two_sigma": false
+    },
+    {
+      "season": 2023,
+      "bss_a": 652.3531914636726,
+      "bss_b": 667.8566094081573,
+      "delta": 15.503417944484681,
+      "two_sigma": 10.182173203343856,
+      "clears_two_sigma": true
+    },
+    {
+      "season": 2024,
+      "bss_a": 743.744743057706,
+      "bss_b": 752.0409596881939,
+      "delta": 8.296216630487834,
+      "two_sigma": 9.849348377114014,
+      "clears_two_sigma": false
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+<component name="libraryTable">
+  <library name="artifacts">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_season_state.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_nn10_a28.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_40pct_lb939.918632.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_stage_ours_w0p500.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_full_state.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_form_a28_rebuild.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_corrections.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10w50_s3.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_nn10_a28_cells.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/sub_tree_reblend_w0p300.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_nn15_candidate.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_pitcher_w50.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_pitcher.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_coldw60.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_pitcher_w75.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_optimal_39.094pct_expected939.919868.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_pitcher_a20.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_seed_ensemble_v2.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_r10_pitcher_w418194.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/submit_nn10_candidate.zip!/" />
+      <root url="jar://$PROJECT_DIR$/artifacts/sub_two_strike_lgbcat_w0p250.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

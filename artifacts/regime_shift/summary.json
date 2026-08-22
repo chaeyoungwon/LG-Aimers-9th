@@ -1,0 +1,19 @@
+{
+  "regime_classifier_auc": 0.8449021661111111,
+  "restricted_auc": 0.8111768388888889,
+  "restricted_excludes": [
+    "asof_batter_n",
+    "asof_pitcher_n",
+    "asof_pitcher_pitchmix_n",
+    "batter_id",
+    "game_month",
+    "pitcher_id"
+  ],
+  "test_read": false,
+  "submission_created": false,
+  "seasons": [
+    2022,
+    2023,
+    2024
+  ]
+}

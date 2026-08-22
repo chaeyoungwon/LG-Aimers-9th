@@ -1,0 +1,38 @@
+{
+  "feature": "prev5_vs_cur_p_succ",
+  "formula": "asof_pitcher_prev5_game_success_rate - cur_p_succ",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "coverage": 0.6840678411922781,
+  "criterion": "R three folds positive and each delta > 2sigma",
+  "accepted": false,
+  "folds": [
+    {
+      "season": 2022,
+      "bss_a": 639.6545398914544,
+      "bss_b": 653.8449512693,
+      "delta": 14.190411377845635,
+      "two_sigma": 7.692243461614569,
+      "clears_two_sigma": true
+    },
+    {
+      "season": 2023,
+      "bss_a": 652.3531914636726,
+      "bss_b": 655.1129033831149,
+      "delta": 2.7597119194423385,
+      "two_sigma": 9.328910067903948,
+      "clears_two_sigma": false
+    },
+    {
+      "season": 2024,
+      "bss_a": 743.744743057706,
+      "bss_b": 741.9093445307112,
+      "delta": -1.8353985269948225,
+      "two_sigma": 8.430261853886917,
+      "clears_two_sigma": false
+    }
+  ]
+}

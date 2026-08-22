@@ -1,0 +1,32 @@
+{
+  "base": "submit_season_state.zip",
+  "baseline_ours_weight": 0.4,
+  "baseline_mean": 0.4736489380182696,
+  "proxy_rows": 253507,
+  "candidates": [
+    {
+      "ours_weight": 0.5,
+      "team_weight": 0.5,
+      "mean": 0.4731534563053805,
+      "mean_shift": -0.0004954817128891009,
+      "max_abs_prediction_delta": 0.00676300844086869,
+      "two_sigma_bss": 1.990043853148508
+    },
+    {
+      "ours_weight": 0.6,
+      "team_weight": 0.4,
+      "mean": 0.4726579745924913,
+      "mean_shift": -0.0009909634257783129,
+      "max_abs_prediction_delta": 0.01352601688173738,
+      "two_sigma_bss": 3.980087706297016
+    },
+    {
+      "ours_weight": 0.7,
+      "team_weight": 0.30000000000000004,
+      "mean": 0.4721624928796023,
+      "mean_shift": -0.0014864451386673028,
+      "max_abs_prediction_delta": 0.020289025322606125,
+      "two_sigma_bss": 5.970131559445522
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "zip": "submit_season_state.zip",
+  "train": "/Users/wooh/Documents/dev/open/data/train.csv",
+  "seasons": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "targets": [
+    2020
+  ],
+  "members": [
+    "cat",
+    "team"
+  ],
+  "row_independent": true,
+  "cells": {
+    "2020/cat": {
+      "file": "2020_cat.npy",
+      "rows": 244087,
+      "mean": 0.5592136793708341
+    },
+    "2020/team": {
+      "file": "2020_team.npy",
+      "rows": 244087,
+      "mean": 0.5516863147980804
+    }
+  }
+}

@@ -1,107 +1,154 @@
-# NOTE: 이 도구를 진작 만들었어야 했다. "2024 행의 season 만 2025 로 바꾼" 합성
-# 리허설은 시즌 상태 피처를 전부 결측으로 만들어 수준 검증이 불가능했고, 그 결과
-# 이중 보정을 못 잡아 제출 하나를 날렸다 (899.15).
-"""진짜 2025 처럼 생긴 평가 프록시를 만들어 파이프라인 수준을 비교한다.
+"""진짜 2025처럼 생긴 평가 프록시를 만들어 제출 ZIP의 예측 수준을 비교한다.
 
-지금까지 리허설은 2024 행의 `season` 만 2025 로 바꾼 합성이었다. 그러면
-`asof_n < n0(2024말)` 이라 시즌 상태 피처가 전부 결측이 되어, 실제 2025 와
-전혀 다른 입력이 된다. 수준 검증이 불가능했던 이유다.
+2024 행의 ``season``만 2025로 바꾸면 ``asof_n < n0(2024말)``이 되어 시즌 상태
+피처가 전부 결측이다. 대신 2024 행의 시즌 내 누적분을 2024말 경계 위로 옮긴다.
 
-제대로 만들려면 asof 값 자체를 옮겨야 한다. 2024 행의 "2024 시즌 상태"를
-그대로 "2025 시즌 상태"로 이식한다:
+    ns       = asof_n - n0(2023말)
+    asof_n'  = n0(2024말) + ns
+    count'   = c0(2024말) + (count - c0(2023말))
+    rate'    = count' / asof_n'
 
-    ns = asof_n - n0(2023말)          # 원래 행의 2024 시즌 투구수
-    asof_n'    = n0(2024말) + ns      # 2025 행이라면 가졌을 값
-    count'     = c0(2024말) + (count - c0(2023말))
-    rate'      = count' / asof_n'
+경계표는 공식 학습 데이터로만 만들며 각 프록시 행도 자기 as-of 값만 사용한다.
 
-이러면 커리어 누적도 시즌 상태도 실제 2025 행과 같은 구조가 된다.
+예시:
+  DYLD_LIBRARY_PATH=/path/to/.venv/lib OMP_NUM_THREADS=1 \
+    .venv/bin/python scripts/make_proxy_2025.py \
+    --train /path/to/train.csv artifacts/submit_season_state.zip
 """
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import os
+import sys
+import tempfile
+import zipfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
-from src import season_state as ss
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
-S = "/private/tmp/claude-501/-Users-yeonho-LG-Aimers-9th/9b152936-a8da-41b4-9201-46bb85cd2077/scratchpad"
-df = pd.read_parquet(f"{S}/train.parquet")
+from src import season_state as ss  # noqa: E402
 
-B23 = ss.build_boundary(df, [2019, 2020, 2021, 2022, 2023])
-B24 = ss.build_boundary(df, [2019, 2020, 2021, 2022, 2023, 2024])
+DEFAULT_TRAIN = ROOT / "data" / "train.csv"
+DEFAULT_ZIPS = (
+    ROOT / "artifacts" / "submit_corrections.zip",
+    ROOT / "artifacts" / "submit_season_state.zip",
+)
 
 
 def lookup(tab, ids_query):
-    o = np.argsort(tab["ids"])
-    ids = tab["ids"][o]
-    k = np.where(np.isfinite(ids_query), ids_query, -1).astype("int64")
-    pos = np.searchsorted(ids, k)
+    order = np.argsort(tab["ids"])
+    ids = tab["ids"][order]
+    key = np.where(np.isfinite(ids_query), ids_query, -1).astype("int64")
+    pos = np.searchsorted(ids, key)
     clip = np.clip(pos, 0, len(ids) - 1)
-    seen = (pos < len(ids)) & (ids[clip] == k)
-    return seen, o, clip
+    seen = (pos < len(ids)) & (ids[clip] == key)
+    return seen, order, clip
 
 
-def build_proxy():
+def build_proxy(df):
+    """2024 행의 시즌 내 상태를 2025 누적값 위로 이식한다."""
+    seasons = sorted(int(s) for s in df.season.unique())
+    if seasons[-1] != 2024:
+        raise ValueError(f"마지막 학습 시즌이 2024가 아니다: {seasons}")
+    prior = [s for s in seasons if s < 2024]
+    boundary_2023 = ss.build_boundary(df, prior)
+    boundary_2024 = ss.build_boundary(df, seasons)
+
     out = df[df.season == 2024].drop(columns=["control_success"]).reset_index(drop=True)
     out["season"] = 2025
     for name, idcol, ncol, rates in ss.GROUPS:
-        t23, t24 = B23[name], B24[name]
-        q = out[idcol].to_numpy(dtype="float64")
-        s23, o23, c23 = lookup(t23, q)
-        s24, o24, c24 = lookup(t24, q)
-        both = s23 & s24
+        old, new = boundary_2023[name], boundary_2024[name]
+        query = out[idcol].to_numpy(dtype="float64")
+        seen_old, order_old, clip_old = lookup(old, query)
+        seen_new, order_new, clip_new = lookup(new, query)
+        both = seen_old & seen_new
+
         n = out[ncol].to_numpy(dtype="float64")
-        n0a = np.where(s23, t23["n0"][o23][c23], np.nan)
-        n0b = np.where(s24, t24["n0"][o24][c24], np.nan)
-        ns = n - n0a
-        newn = np.where(both & (ns > 0), n0b + ns, n)   # 매핑 불가하면 원값 유지
-        for k, col in rates.items():
-            r = out[col].to_numpy(dtype="float64")
-            c = np.rint(n * np.where(np.isfinite(r), r, 0.0))
-            c0a = np.where(s23, t23["c0"][k][o23][c23], np.nan)
-            c0b = np.where(s24, t24["c0"][k][o24][c24], np.nan)
-            newc = c0b + (c - c0a)
+        n0_old = np.where(seen_old, old["n0"][order_old][clip_old], np.nan)
+        n0_new = np.where(seen_new, new["n0"][order_new][clip_new], np.nan)
+        n_season = n - n0_old
+        valid = both & np.isfinite(n_season) & (n_season > 0)
+        shifted_n = np.where(valid, n0_new + n_season, n)
+
+        for short, col in rates.items():
+            rate = out[col].to_numpy(dtype="float64")
+            count = np.rint(n * np.where(np.isfinite(rate), rate, 0.0))
+            c0_old = np.where(
+                seen_old, old["c0"][short][order_old][clip_old], np.nan
+            )
+            c0_new = np.where(
+                seen_new, new["c0"][short][order_new][clip_new], np.nan
+            )
+            shifted_count = c0_new + (count - c0_old)
             with np.errstate(invalid="ignore", divide="ignore"):
-                nr = newc / newn
-            out[col] = np.where(both & (ns > 0) & np.isfinite(nr), nr, r)
-        out[ncol] = newn
-    return out
+                shifted_rate = shifted_count / shifted_n
+            out[col] = np.where(valid & np.isfinite(shifted_rate), shifted_rate, rate)
+        out[ncol] = shifted_n
+
+    out["row_id"] = [f"TEST_{i:06d}" for i in range(len(out))]
+    return out, boundary_2024
+
+
+def predict_zip(zip_path, proxy):
+    """배포 ZIP을 그대로 풀어 전체 ``predict`` 경로를 실행한다."""
+    zip_path = Path(zip_path)
+    with tempfile.TemporaryDirectory(prefix="proxy2025_") as tmp:
+        work = Path(tmp)
+        with zipfile.ZipFile(zip_path) as archive:
+            archive.extractall(work)
+        cwd = os.getcwd()
+        os.chdir(work)
+        sys.path.insert(0, str(work))
+        try:
+            module_name = f"proxy_submit_{abs(hash(zip_path.resolve()))}"
+            spec = importlib.util.spec_from_file_location(module_name, work / "script.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            meta = json.loads((work / "model" / "meta.json").read_text("utf-8"))
+            models = module.load_models("./model", meta)
+            pred = np.asarray(
+                module.predict(proxy, models, meta, verbose=False), dtype="float64"
+            )
+        finally:
+            sys.path.pop(0)
+            os.chdir(cwd)
+    return pred, meta
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", type=Path, default=DEFAULT_TRAIN)
+    parser.add_argument("zips", type=Path, nargs="*")
+    args = parser.parse_args(argv)
+
+    df = pd.read_csv(args.train, encoding="utf-8-sig")
+    proxy, boundary_2024 = build_proxy(df)
+    print(f"proxy rows {len(proxy):,}", flush=True)
+
+    state = ss.add_features(proxy, boundary_2024)
+    print(
+        f"  상태피처 결측 아닌 비율 {state.cur_p_succ.notna().mean():.3f} "
+        f"(실제 2024에서는 0.801)"
+    )
+    print(f"  cur_p_n 중앙값 {state.cur_p_n.median():.0f}", flush=True)
+
+    for zip_path in args.zips or DEFAULT_ZIPS:
+        pred, meta = predict_zip(zip_path, proxy)
+        shift = float(meta.get("final_logit_shift", 0.0))
+        logit = np.log(np.clip(pred, 1e-6, 1 - 1e-6) / np.clip(1 - pred, 1e-6, 1))
+        unshifted = 1 / (1 + np.exp(-(logit - shift)))
+        print(
+            f"{zip_path.name:>28}: 프록시2025 평균 {pred.mean():.6f} "
+            f"(shift 제거 시 {unshifted.mean():.6f})",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":
-    import importlib.util, json, os, sys, tempfile, zipfile
-    from pathlib import Path
-
-    ROOT = Path("/Users/yeonho/LG-Aimers-9th")
-    proxy = build_proxy()
-    proxy["row_id"] = [f"TEST_{i:06d}" for i in range(len(proxy))]
-    print(f"proxy rows {len(proxy):,}", flush=True)
-
-    # 시즌 상태 피처가 실제로 채워지는지 확인
-    spec_tab = B24
-    F = ss.add_features(proxy, spec_tab)
-    print(f"  상태피처 결측 아닌 비율 {F.cur_p_succ.notna().mean():.3f} "
-          f"(실제 2024 에서는 0.801)")
-    print(f"  cur_p_n 중앙값 {F.cur_p_n.median():.0f}", flush=True)
-
-    for name in ("submit_corrections.zip", "submit_season_state.zip"):
-        with tempfile.TemporaryDirectory() as tmp:
-            w = Path(tmp)
-            with zipfile.ZipFile(ROOT / "artifacts" / name) as z:
-                z.extractall(w)
-            cwd = os.getcwd()
-            os.chdir(w)
-            sys.path.insert(0, str(w))
-            try:
-                sp = importlib.util.spec_from_file_location("s", w / "script.py")
-                m = importlib.util.module_from_spec(sp)
-                sp.loader.exec_module(m)
-                meta = json.load(open("./model/meta.json", encoding="utf-8"))
-                p = np.asarray(m.predict(proxy, m.load_models("./model", meta),
-                                         meta, verbose=False), dtype=float)
-                sh = meta.get("final_logit_shift", 0.0)
-                z_ = np.log(np.clip(p, 1e-6, 1 - 1e-6) / np.clip(1 - p, 1e-6, 1))
-                p0 = 1 / (1 + np.exp(-(z_ - sh)))
-            finally:
-                os.chdir(cwd)
-                sys.path.pop(0)
-        print(f"{name:>28}: 프록시2025 평균 {p.mean():.6f}"
-              f"   (shift 제거 시 {p0.mean():.6f})", flush=True)
+    main()

@@ -26,6 +26,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src import season_state as ss
+
 TARGET = "control_success"
 
 
@@ -50,6 +52,7 @@ class Champion:
         self.meta = json.loads((self.work / "model" / "meta.json").read_text("utf-8"))
         self.script = self._import_script()
         self.members = {m["name"]: m for m in self.meta["members"]}
+        self._state_cache = {}
 
     def _import_script(self):
         spec = importlib.util.spec_from_file_location(
@@ -64,9 +67,21 @@ class Champion:
 
     # ---- 피처 ------------------------------------------------------------
 
+    def state_frame(self, df):
+        """시즌별 train-only 경계로 복원한 상태 프레임을 실행 중 한 번만 만든다."""
+        key = id(df)
+        cached = self._state_cache.get(key)
+        if cached is None or not cached.index.equals(df.index):
+            cached = ss.add_features_by_season(df)
+            self._state_cache = {key: cached}
+        return cached
+
     def frame(self, df, name):
         """멤버 하나가 먹는 피처 프레임. 배포본의 빌더를 그대로 통과시킨다."""
         X = df.copy()
+        required = self.members[name]["feature_columns"]
+        if any(c.startswith("cur_") and c not in X for c in required):
+            X = pd.concat([X, self.state_frame(df)], axis=1)
         for col, levels in self.meta["cat_levels"].items():
             X[col] = pd.Categorical(X[col], categories=levels)
         X = self.script.build_submit_features(X, self.members[name])
@@ -108,6 +123,8 @@ class Champion:
         cats = spec["cat_cols"]
 
         d = add_features(df)
+        if any(c.startswith("cur_") and c not in d for c in cols):
+            d = pd.concat([d, self.state_frame(df)], axis=1)
         maps = build_category_maps(d[d.season.isin(train_seasons)], cats)
         X = apply_category_maps(d, cats, maps)[cols]
         y = df[TARGET].to_numpy(dtype="float64")

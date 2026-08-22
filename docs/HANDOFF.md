@@ -9,14 +9,29 @@
 | | 점수 | 상태 |
 | --- | ---: | --- |
 | 18차 `artifacts/submit_season_state.zip` | **1051.5537225994** | 확인된 최고 |
-| 19차 `artifacts/submit_full_state.zip` | 미제출 (+8 예상) | **제출 대기** |
+| 19차 `artifacts/submit_full_state.zip` | **1047.5446166079** | 기각 (18차 대비 −4.0091) |
+| 20차 `artifacts/submit_stage_ours_w0p500.zip` | **1048.0613692365** | 기각 (18차 대비 −3.4924) |
+| 21차 `artifacts/sub_tree_reblend_w0p300.zip` | **1058.074429882** | 새 최고 (18차 대비 +6.5207) |
+
+최종 제한 검증을 통과한 **미제출 후보**가 하나 있다:
+
+- `artifacts/sub_two_strike_lgbcat_w0p250.zip`
+- two-strike(0-2/1-2/2-2) 안에서만 `75% champion + 25% × mean(LGB,CAT expert)`
+- rolling ΔBSS `+5.75/+24.02/+4.34`; 2024 paired 2SE `4.08` 통과
+- seed 42/43/44 모두 2022·2024 양수, outside slice 비트 동일
+- CRC/격리 실행/3,000행 6종 독립성 통과, SHA-256
+  `48add68ddd754f496256483aa41057de9612592a601f2ea18e5f445a1bfeb297`
+- 상세 `docs/experiments/two-strike-final-expert.md`
+
+아직 LB 결과가 없으므로 21차 champion 승격은 유지한다. 후보가 LB에서 실패하면
+two-strike 설정·count 분리·weight 추가 탐색 없이 이 방향을 종료한다.
 
 선두 1197 / 2위 1196 / 3위 1186 / 5위 1170대. 1100 까지 약 48점.
 
 19차는 시즌 상태 피처를 5멤버 전부(hgb·cat·nn·team·team_nn)로 넓힌 것이다.
-18차는 cat·team 두 멤버(블렌드의 약 70%)에만 들어가 있었다. 커버리지 비례 외삽으로
-+8 을 기대하지만, 백테스트 프록시가 leaf63 단일 모델이라 5멤버 블렌드를 직접 재지
-못한다 — 그래서 이건 **추정치이지 측정치가 아니다.**
+18차는 cat·team 두 멤버(블렌드의 약 70%)에만 들어가 있었다. 커버리지 비례로 +8을
+예상했지만 실제로는 **−4.0091**이었다. 피처가 두 멤버에서 유효하다는 사실은 다른
+멤버에도 같은 피처가 유효하다는 뜻이 아니다. **챔피언과 이후 튜닝 기준선은 18차다.**
 
 빌드·검증은 끝나 있다:
 - 실행 245,789행 16초
@@ -161,12 +176,14 @@ pitcher_trackman_id` 연결 자체는 검증되었다 (팀 일치율 0.997, 구�
 
 ## 6. 다음에 할 일 — 우선순위 순
 
-### 6.1 19차 제출 (즉시)
+### 6.1 19차 제출 — 완료, 기각
 
-`artifacts/submit_full_state.zip` 을 올리고 점수를 README 이력에 기록한다.
-이게 없으면 아래 튜닝의 기준선이 정해지지 않는다.
+`artifacts/submit_full_state.zip` 은 **1047.5446166079**, 18차 대비 **−4.0091059915**.
+5멤버 전체 확장은 기각하며 아래 LB 튜닝은 18차를 기준선으로 한다.
 
 ### 6.2 LB 피드백 튜닝 (가장 확실하게 남은 것)
+
+**기준 ZIP: `artifacts/submit_season_state.zip` (18차, 1051.5537225994).**
 
 백테스트 전이 배율이 0.44 밖에 안 되고, 상위권은 50~73회를 제출했다. 즉
 **리더보드가 더 정확한 심판**이다. 로컬에서 "평평하다 / LOFO 로 기각"으로 버린
@@ -186,20 +203,93 @@ pitcher_trackman_id` 연결 자체는 검증되었다 (팀 일치율 0.997, 구�
 14차에서 썼던 방법을 그대로 쓴다: 같은 손잡이의 실측 LB 세 점에 Brier 이차식을
 맞춰 최적값을 복원한다. 세 점이 모이기 전에는 외삽하지 않는다.
 
-### 6.3 싼 파생 두 개 (반나절)
+첫 후보 `artifacts/submit_stage_ours_w0p500.zip` 을 만들었다. 18차에서 메타의
+스테이지 비중만 `ours/team = 0.4/0.6 → 0.5/0.5` 로 바꿨다. 프록시 2025에서 평균은
+`0.473649 → 0.473153`, 최대 행 변화 `0.006763`, 예측 차이 2σ는 `1.99 BSS`다.
+상세는 `docs/experiments/stage-weight-lb.md`.
 
-- **최근 폼 vs 시즌 베이스라인.** 지금 `prev_vs_career` (직전5경기 − 커리어) 는
-  있는데, 시즌 상태 피처가 생겼으니 `prev5 − cur_p_succ` 가 더 적절한 기준이다.
-  "시즌 평균 대비 지금 뜨거운가". 파생 한 줄이다.
-- **상태 피처 × 카운트/좌우 명시적 상호작용.** 상태 피처가 방금 들어갔으니 트리가
-  아직 상호작용을 충분히 못 배웠을 수 있다. 신호가 약할 때는 명시적 조합이
-  도움이 되곤 한다.
+실제 LB는 **1048.0613692365**로 18차보다 **−3.4923533629** 하락했다. 따라서
+`ours=0.5`는 기각하고 `0.6/0.7`도 제출하지 않는다. 이후 기준선은 계속 18차다.
 
-둘 다 판정 규칙 4번(양쪽 다중 시드)을 지켜서 잰다.
+### 6.2.1 다음 제출 후보 — tree-only 재배합
+
+실제 18차 5멤버를 2021~2024 rolling OOF로 모두 재학습했다. NN 두 축이 네 시즌
+모두 트리 축보다 약해, 고정 **Cat 30% + LightGBM team 70%** 후보를 만들었다.
+
+- ZIP: `artifacts/sub_tree_reblend_w0p300.zip`
+- 2025 구조 프록시: `1535.71 → 1567.60` (**+31.89 BSS**)
+- rolling 방향: Cat25/team75 기준 `+94.74 / -0.76 / +165.88 / +1.50`
+- 기본 ZIP 대비 변경 파일: `model/meta.json` 하나
+- 행 독립성 3,000행 4종 비트 동일, 전체 테스트 `7 passed`
+- SHA-256: `8ce93a197efea18cf89b7b988c59a8b369d683983152b24b74976a96885da7cb`
+
+실제 LB는 **1058.074429882**로 18차보다 **+6.5207072826** 개선되어 새 챔피언으로
+승격한다. 프록시 +31.89의 LB 전이율은 약 20.4%였다. Cat 비중 30→40%는 프록시와
+rolling 모두 차이가 작아 추가 제출 가치가 없고, 50% 이상은 최근 2024 폴드가
+악화한다. 상세는 `docs/experiments/high-gain-screen.md`, 재현은
+`scripts/build_tree_reblend.py`.
+
+**현재 환경 주의:** 행 독립성 비트 검사는 18차 원본과 후보가 둘 다 실패한다.
+Torch 2.8의 `nn`만 셔플 시 7/3,000행에서 최종 예측 최대 `4.82e-9`(18차),
+`6.02e-9`(후보) 차이가 난다. 다른 네 멤버는 비트 동일하고 후보는 `meta.json` 외
+파일 해시가 원본과 같다. 기존 인수인계 환경에서는 4종 통과 기록이 있으나, 현재
+환경에서는 엄격한 비트 동일을 재현하지 못했다.
+
+### 6.3 싼 파생 두 개 — **둘 다 기각**
+
+- **최근 폼 vs 시즌 베이스라인.** `prev5 − cur_p_succ` 한 컬럼. 3시드 R 폴드
+  `+14.19 / +2.76 / -1.84`, 평균 `+5.04`. 2023은 2σ 안이고 2024는 악화라 기각.
+- **상태 피처 × 카운트/좌우 명시적 상호작용.** 투수 상태 비율 5개를 12개 카운트와
+  4개 좌우 셀에 게이팅한 80컬럼. 3시드 R 폴드 `+4.20 / -0.47 / +29.09`, 평균
+  `+10.94`. 2022는 2σ 안이고 2023은 악화라 기각.
+
+둘 다 기준선과 후보를 seed 42·43·44로 재학습했다. 재현은
+`scripts/validate_state_derivatives.py`, 상세 기록은
+`docs/experiments/state-derivatives.md` 를 본다.
 
 ---
 
 ## 7. 하지 말 것 — 기각 기록
+
+### 2022·2024 residual slice — two-strike 발견, expert 제출은 기각 (2026-08-22)
+
+사전 정의 slice scan에서 0-2/1-2/2-2(`two_strike`, share 약 24%) 하나만 stable했다.
+Excess Brier/500-bootstrap CI는 2022 `.001530/[.000900,.002141]`, 2024
+`.000974/[.000606,.001336]`. Slice-only LightGBM 3시드 25% gated blend는 전체
+ΔBSS `+6.50/+22.75/+3.78`, slice ΔBSS `+26.98/+95.70/+15.67`; outside는 0이고
+R/F도 양수였다. 그러나 2024 paired 2SE가 `4.31`로 gain `3.78`보다 커 제출 gate
+FAIL. **NO SUBMISSION CANDIDATE**, ZIP 없음. 상세는
+`docs/experiments/residual-slice-mining.md`.
+
+### 2023 regime shift 진단 — shift는 있으나 모델 action 없음 (2026-08-22)
+
+2023-only 개선의 주원인은 `game_type=F` target 급락이다. F target/prediction은
+2022 `.7087/.7032` → 2023 `.4729/.6688` → 2024 `.4593/.4655`; 2023 OOF만 과거
+high-F prior 때문에 calibration error `-.1959`를 냈다. Hard/EB/LUPI auxiliary가
+2023 F를 개선한 대신 같은 F 행을 2022·2024에서 모두 악화했다. 2024 champion은
+이미 새 F 레짐에 적응했으므로 2025 mixture로 전이할 근거가 없다. 판정은
+**SHIFT EXISTS BUT NOT ACTIONABLE / ROBUST VALIDATION POLICY ONLY**. 상세는
+`docs/experiments/regime-shift-diagnostic.md`, 산출물은 `artifacts/regime_shift/`.
+
+### Hard-example / uncertainty-aware objective — 기각 (2026-08-22)
+
+Cutoff-safe Cat30/team70 inner OOF로 LightGBM team 학습행을 재가중했다. Hard
+q50/q75/q90=`1/1.5/2/3`은 ECE `.09~.12`, prediction corr 음수로 붕괴했다.
+Uncertainty λ=.5/1.0은 residual corr `.9999`이고 단독 Brier가 세 폴드 모두 악화했다.
+두 seed 모두 모든 후보가 2022·2024를 악화해 seed 44와 signed specialist를 중단했다.
+Uncertainty .5의 5% blend BSS는 `-0.20/-4.24/+0.35`; 제출 ZIP 없음. 상세는
+`docs/experiments/hard-example-objective.md`, 재현은
+`scripts/validate_hard_example_objective.py`.
+
+### Hierarchical Empirical-Bayes prior-only — 기각 (2026-08-22)
+
+공식 train의 cutoff 이전 정답만으로 전역→투수/타자→좌우·카운트→매치업 계층을
+부모 posterior에 shrink했다. 현재 21차 챔피언 OOF 대비 대표 `k=500` gain은
+2022/2023/2024 `-0.004647 / +0.001228 / -0.003666`; 2.5~15% 블렌드도 2022와
+2024가 모두 악화했다. 저표본 투수·타자 구간은 오히려 가장 나빴다. 중단 규칙에
+따라 logistic은 실행하지 않았고 제출 ZIP도 만들지 않았다. 셔플/역순/부분집합/삭제/
+무관 중복 행 독립성 최대 차이는 0.0. 재현은 `scripts/validate_hierarchical_eb.py`,
+상세는 `docs/experiments/hierarchical-eb-prior.md`.
 
 재시도 전에 이 숫자를 먼저 볼 것.
 
@@ -207,6 +297,19 @@ pitcher_trackman_id` 연결 자체는 검증되었다 (팀 일치율 0.997, 구�
 | --- | --- |
 | Trackman 물리 피처 (릴리스·무브먼트) | 잔차 상관 ≤0.016, 백테스트 부호 엇갈림 |
 | Trackman 카운트별 구종 구성 | 칸 내부 상관 +0.0082 (5절) |
+| 시즌 상태 5멤버 전체 확장 | LB 1047.5446, 18차 대비 −4.0091 |
+| `prev5 − cur_p_succ` | 3시드 R 폴드 +14.19 / +2.76 / −1.84, 평균 +5.04 |
+| 상태 × 카운트/좌우 80개 | 3시드 R 폴드 +4.20 / −0.47 / +29.09, 평균 +10.94 |
+| 당해 시즌 상태 − 커리어 상태 10개 | 3시드 R 폴드 +2.52 / +15.50 / +8.30, 평균 +8.77; 2개 폴드 2σ 안 |
+| 성공률 시즌 경계 off-by-one 수정 | 3시드 R 폴드 +17.92 / +2.18 / −6.64, 평균 +4.49 |
+| CatBoost 선수 ID CTR | 2024 R: 투수+타자 −61.11 / 투수만 −46.03 |
+| 신규 잔차 lookup | 타자×베이스 평균 +2.37, 타자×손·유불리 +2.12, 맞대결 +1.80; 모두 2σ 미만 |
+| F 최근 레짐 상수 25% | 실제 18차 2024 프록시 전체 −27.98, F −237.79; 제출 금지 |
+| Histogram XGBoost | 2024 단독 619.39, 21차 기준에 5% 혼합도 −1.90 |
+| forward residual LightGBM | 2024 잔차 상관 0.0052, 10% +0.55 / 20% −27.14 |
+| TrackMan LUPI auxiliary student | seed 42·43 모두 2022/2024 악화; 21차 5% blend +0.88/+25.13/−2.50, 2023 의존 |
+| TrackMan teacher→student | 21차 5% blend +0.25/−10.50/−1.09; privileged signal이 student로 전달되지 않음 |
+| 공식 feature inventory + pitcher role state | main predictor 47/47 이미 사용; role 5% blend +0.96/−13.59/−0.34, residual corr 0.999764 |
 | 다중 창 피처 `window_features` | 3시드 세 폴드 전부 악화, 평균 −9.4, z=−1.98 |
 | 구종 엔트로피 | −9.4 |
 | asof 오프셋 | −36.6 |

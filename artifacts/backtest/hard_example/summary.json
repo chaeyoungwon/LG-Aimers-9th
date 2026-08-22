@@ -1,0 +1,7 @@
+{
+  "fast_stop": "seeds 42/43: every candidate worsened both 2022 and 2024",
+  "specialist_run": false,
+  "specialist_reason": "run only if A/B are not complete failures",
+  "outer_validation_used_for_weights": false,
+  "row_independent_inference": true
+}

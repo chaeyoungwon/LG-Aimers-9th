@@ -1,0 +1,130 @@
+dataset,column,dtype,semantic_family,predictive,champion_direct,champion_derived_source,existing_experiment,rule_safety,notes
+train.csv,row_id,object,identifier,False,False,False,raw/derived champion coverage,SAFE,current-row official column
+train.csv,season,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,game_month,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,game_dayofweek,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,inning,int64,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,top_bottom,object,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,game_type,object,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,balls_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,strikes_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,outs_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,run_top_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,run_bot_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,run_total_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,score_diff_home,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,score_diff_pitcher_team,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,runner_on_1b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,runner_on_2b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,runner_on_3b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,num_runners_on,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,base_state,object,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,home_win_expectancy,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,away_win_expectancy,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,li,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,pitcher_id,int64,identifier,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,batter_id,int64,identifier,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,pitcher_hand,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,batter_hand,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,pitcher_team_id,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,batter_team_id,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_n,int64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_success_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_reverse_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_middle_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_ball_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_strike_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev1_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev3_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev5_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev1_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev3_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_prev5_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_batter_n,int64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_batter_success_rate,float64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_batter_middle_rate,float64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_pitchmix_n,int64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_fastball_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_breaking_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,asof_pitcher_offspeed_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+train.csv,control_success,int64,target,False,False,False,raw/derived champion coverage,TRAIN-ONLY,current-row official column
+test.csv,row_id,object,identifier,False,False,False,raw/derived champion coverage,SAFE,current-row official column
+test.csv,season,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,game_month,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,game_dayofweek,int64,calendar,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,inning,int64,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,top_bottom,object,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,game_type,object,game_context,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,balls_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,strikes_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,outs_before,int64,count_out,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,run_top_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,run_bot_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,run_total_before,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,score_diff_home,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,score_diff_pitcher_team,int64,score_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,runner_on_1b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,runner_on_2b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,runner_on_3b,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,num_runners_on,int64,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,base_state,object,base_state,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,home_win_expectancy,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,away_win_expectancy,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,li,float64,leverage,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,pitcher_id,int64,identifier,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,batter_id,int64,identifier,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,pitcher_hand,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,batter_hand,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,pitcher_team_id,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,batter_team_id,int64,team_hand,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_n,int64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_success_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_reverse_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_middle_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_ball_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_strike_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev1_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev3_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev5_game_success_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev1_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev3_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_prev5_game_middle_rate,float64,pitcher_recent_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_batter_n,int64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_batter_success_rate,float64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_batter_middle_rate,float64,batter_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_pitchmix_n,int64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_fastball_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_breaking_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+test.csv,asof_pitcher_offspeed_rate,float64,pitcher_asof,True,True,True,raw/derived champion coverage,SAFE,current-row official column
+sample_submission.csv,row_id,object,identifier,False,False,False,raw/derived champion coverage,SAFE,current-row official column
+sample_submission.csv,control_success,float64,target,False,False,False,raw/derived champion coverage,TRAIN-ONLY,current-row official column
+trackman_history.csv,trackman_id,int64,identifier,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,season,int64,calendar,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,game_date,object,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,game_month,int64,calendar,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,game_dayofweek,int64,calendar,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,trackman_game_id,object,identifier,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitch_no,int64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,inning,int64,game_context,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,top_bottom,object,game_context,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,balls_before,int64,count_out,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,strikes_before,int64,count_out,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,outs_before,int64,count_out,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitch_of_pa,int64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitcher_trackman_id,int64,identifier,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,batter_trackman_id,int64,identifier,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitcher_hand,object,team_hand,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,batter_hand,object,team_hand,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitcher_team,object,team_hand,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,batter_team,object,team_hand,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,tagged_pitch_type,object,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,auto_pitch_type,object,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,pitch_type_group,object,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,rel_speed,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,spin_rate,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,induced_vert_break,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,horz_break,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,extension,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,rel_height,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,rel_side,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference
+trackman_history.csv,zone_speed,float64,trackman_physics_or_event,True,False,False,TrackMan closed axis,TRAIN-ONLY,current-pitch TrackMan unavailable at inference

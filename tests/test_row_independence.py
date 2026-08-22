@@ -28,8 +28,10 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ZIP = ROOT / "artifacts" / "submit_corrections.zip"
-TRAIN = ROOT / "data" / "train.csv"
+DEFAULT_ZIP = Path(os.environ.get(
+    "ROWINDEP_ZIP", ROOT / "artifacts" / "submit_corrections.zip"
+))
+TRAIN = Path(os.environ.get("ROWINDEP_TRAIN", ROOT / "data" / "train.csv"))
 N_ROWS = int(os.environ.get("ROWINDEP_N", "3000"))
 SEED = 0
 VERBOSE = bool(os.environ.get("ROWINDEP_VERBOSE"))
@@ -38,6 +40,19 @@ VERBOSE = bool(os.environ.get("ROWINDEP_VERBOSE"))
 def _log(msg):
     if VERBOSE:
         print(msg, flush=True)
+
+
+def _assert_bit_equal(actual, expected, message):
+    """비트 불일치 시 건수와 크기를 남겨 구조적 의존과 부동소수 잡음을 구분한다."""
+    actual = np.asarray(actual)
+    expected = np.asarray(expected)
+    if np.array_equal(actual, expected):
+        return
+    delta = np.abs(actual.astype("float64") - expected.astype("float64"))
+    raise AssertionError(
+        f"{message}: 불일치 {np.count_nonzero(delta):,}/{delta.size:,}, "
+        f"max|Δ|={delta.max():.3e}, mean|Δ|={delta.mean():.3e}"
+    )
 
 
 @contextlib.contextmanager
@@ -108,20 +123,23 @@ def run_checks(zip_path=DEFAULT_ZIP):
             # (1) 순서를 섞어도 각 행의 값은 그대로여야 한다
             perm = np.random.default_rng(1).permutation(len(rows))
             shuffled = predict(rows.iloc[perm])
-            assert np.array_equal(shuffled, full[perm]), "순서에 의존한다"
+            _assert_bit_equal(shuffled, full[perm], "순서에 의존한다")
 
             # (2) 부분집합만 넣어도 그 행들의 값은 그대로여야 한다
             for frac in (0.5, 0.1):
                 take = np.sort(np.random.default_rng(2).choice(
                     len(rows), size=int(len(rows) * frac), replace=False))
-                assert np.array_equal(predict(rows.iloc[take]), full[take]), \
-                    f"부분집합({frac})에서 값이 달라진다"
+                _assert_bit_equal(
+                    predict(rows.iloc[take]), full[take],
+                    f"부분집합({frac})에서 값이 달라진다",
+                )
 
             # (3) 1행만 넣어도 같아야 한다 — 규칙이 명시한 판정 기준
             for i in np.random.default_rng(3).choice(len(rows), 12, replace=False):
                 one = predict(rows.iloc[[i]])
-                assert np.array_equal(one, full[[i]]), \
-                    f"단일 행 {i}: {one[0]!r} != {full[i]!r}"
+                _assert_bit_equal(
+                    one, full[[i]], f"단일 행 {i}: {one[0]!r} != {full[i]!r}"
+                )
 
             # (4) 다른 행을 바꿔치기해도 대상 행은 영향받지 않아야 한다
             mutated = rows.copy()

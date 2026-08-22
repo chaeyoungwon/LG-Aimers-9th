@@ -138,6 +138,155 @@ def add_features_by_season(df, prefix="cur_"):
     return pd.concat(parts).reindex(df.index)
 
 
+def exact_success_features_by_season(df, prefix="exact_"):
+    """라벨로 이전 시즌 마지막 투구까지 완결한 성공률 상태를 복원한다.
+
+    일반 ``build_boundary``는 성공/실패 세부 유형 라벨이 모두 없어서 각 선수의
+    마지막 투구 *직전* as-of 값을 경계로 쓴다. 성공률만은 ``control_success``가
+    있으므로 마지막 투구 한 개를 정확히 더해 다음 시즌의 첫 행이 거짓 표본 1개를
+    가진 것처럼 보이는 off-by-one을 없앨 수 있다.
+
+    시즌 Y 행의 표는 시즌 < Y의 라벨만 사용하고, 평가용 표도 공식 train 마지막
+    라벨로 미리 고정할 수 있으므로 행 독립성과 시간 순서를 모두 지킨다.
+    """
+    specs = (
+        ("p", "pitcher_id", "asof_pitcher_n", "asof_pitcher_success_rate"),
+        ("b", "batter_id", "asof_batter_n", "asof_batter_success_rate"),
+    )
+    seasons = sorted(df.season.unique())
+    parts = []
+    for season in seasons:
+        prior = df[df.season < season]
+        rows = df[df.season == season]
+        out = {}
+        for name, id_col, n_col, rate_col in specs:
+            eligible = prior[prior[n_col].notna()]
+            if eligible.empty:
+                out[f"{prefix}{name}_n"] = np.full(len(rows), np.nan)
+                out[f"{prefix}{name}_succ"] = np.full(len(rows), np.nan)
+                continue
+            last = eligible.loc[eligible.groupby(id_col)[n_col].idxmax()]
+            order = np.argsort(last[id_col].to_numpy())
+            ids = last[id_col].to_numpy(dtype="int64")[order]
+            n_before = last[n_col].to_numpy(dtype="float64")[order]
+            rate_before = last[rate_col].to_numpy(dtype="float64")[order]
+            n0 = n_before + 1.0
+            c0 = (
+                np.rint(n_before * np.where(np.isfinite(rate_before), rate_before, 0.0))
+                + last["control_success"].to_numpy(dtype="float64")[order]
+            )
+
+            key = rows[id_col].to_numpy(dtype="float64")
+            missing = ~np.isfinite(key)
+            key_int = np.where(missing, -1, key).astype("int64")
+            pos = np.searchsorted(ids, key_int)
+            clipped = np.clip(pos, 0, len(ids) - 1)
+            seen = (pos < len(ids)) & (ids[clipped] == key_int) & ~missing
+            n = rows[n_col].to_numpy(dtype="float64")
+            rate = rows[rate_col].to_numpy(dtype="float64")
+            span = n - np.where(seen, n0[clipped], np.nan)
+            count = np.rint(n * np.where(np.isfinite(rate), rate, 0.0))
+            with np.errstate(invalid="ignore", divide="ignore"):
+                success = (count - np.where(seen, c0[clipped], np.nan)) / span
+            valid = seen & np.isfinite(span) & (span > 0) & np.isfinite(success)
+            out[f"{prefix}{name}_n"] = np.where(valid, span, np.nan)
+            out[f"{prefix}{name}_succ"] = np.where(valid, success, np.nan)
+        parts.append(pd.DataFrame(out, index=rows.index))
+    return pd.concat(parts).reindex(df.index).astype("float32")
+
+
+def recent_form_feature(df, state, prefix="cur_"):
+    """직전 5경기 성공률이 당해 시즌 상태보다 얼마나 높은지 계산한다.
+
+    기존 ``prev_vs_career`` 는 직전 5경기를 커리어 누적 성공률과 비교한다. 시즌
+    상태 피처가 있는 모델에서는 같은 행에서 복원한 당해 시즌 성공률을 기준으로
+    삼는 편이 "이번 시즌 평소보다 지금 뜨거운가"에 더 직접적으로 대응한다.
+
+    두 입력은 모두 행 단위 값이며, ``state`` 역시 공식 학습 데이터로 만든 경계표와
+    해당 행의 as-of 값만 사용한다. 어느 한쪽이 결측이면 파생값도 결측으로 둔다.
+    """
+    cur_col = f"{prefix}p_succ"
+    if cur_col not in state:
+        raise KeyError(f"state에 {cur_col!r} 컬럼이 없다")
+
+    prev = pd.to_numeric(
+        df["asof_pitcher_prev5_game_success_rate"], errors="coerce"
+    ).to_numpy(dtype="float64")
+    cur = pd.to_numeric(state[cur_col], errors="coerce").to_numpy(dtype="float64")
+    value = np.where(np.isfinite(prev) & np.isfinite(cur), prev - cur, np.nan)
+    return pd.DataFrame(
+        {"prev5_vs_cur_p_succ": value.astype("float32")}, index=df.index
+    )
+
+
+def state_vs_career_features(df, state, prefix="cur_"):
+    """당해 시즌 상태가 커리어 누적 상태에서 얼마나 벗어났는지 명시한다.
+
+    원재료 두 개를 모두 넣은 트리도 제한된 깊이에서는 ``cur - career`` 방향을
+    여러 분기로 근사해야 한다. 동일 선수의 장기 수준을 제거한 변화량을 직접 주면
+    "원래보다 이번 시즌에 좋아졌는가"를 한 번의 분기로 사용할 수 있다.
+
+    두 입력 모두 자기 행의 공식 ``asof_*`` 값과 train-only 시즌 경계표로 만든
+    값이므로 추가 피처 역시 행 단위 독립이다.
+    """
+    out = {}
+    for name, _, _, rates in GROUPS:
+        for short, career_col in rates.items():
+            state_col = f"{prefix}{name}_{short}"
+            if state_col not in state:
+                raise KeyError(f"state에 {state_col!r} 컬럼이 없다")
+            current = pd.to_numeric(
+                state[state_col], errors="coerce"
+            ).to_numpy(dtype="float64")
+            career = pd.to_numeric(
+                df[career_col], errors="coerce"
+            ).to_numpy(dtype="float64")
+            value = np.where(
+                np.isfinite(current) & np.isfinite(career),
+                current - career,
+                np.nan,
+            )
+            out[f"{state_col}_vs_career"] = value.astype("float32")
+    return pd.DataFrame(out, index=df.index)
+
+
+def context_interaction_features(df, state, prefix="cur_"):
+    """투수 시즌 상태 비율을 카운트와 투·타 좌우 셀 안에 명시적으로 게이팅한다.
+
+    트리가 약한 신호의 상호작용을 제한된 깊이 안에서 찾지 못할 가능성을 검증하기
+    위한 후보군이다. 투수 상태의 다섯 비율만 사용하고, 12개 볼-스트라이크 셀과
+    4개 투·타 손 조합을 사전에 고정한다. 해당 셀이 아닌 행은 0이 아니라 결측으로
+    두어, 값 0과 "이 셀에 속하지 않음"을 구분한다.
+    """
+    state_cols = [f"{prefix}p_{name}" for name in ("succ", "mid", "ball", "rev", "strk")]
+    missing = [c for c in state_cols if c not in state]
+    if missing:
+        raise KeyError(f"state에 필요한 컬럼이 없다: {missing}")
+
+    balls = pd.to_numeric(df["balls_before"], errors="coerce").to_numpy(float)
+    strikes = pd.to_numeric(df["strikes_before"], errors="coerce").to_numpy(float)
+    count = balls * 3 + strikes
+    pitcher_hand = pd.to_numeric(df["pitcher_hand"], errors="coerce").to_numpy(float)
+    batter_hand = pd.to_numeric(df["batter_hand"], errors="coerce").to_numpy(float)
+
+    out = {}
+    for col in state_cols:
+        short = col.removeprefix(prefix)
+        value = pd.to_numeric(state[col], errors="coerce").to_numpy(float)
+        for balls_before in range(4):
+            for strikes_before in range(3):
+                key = balls_before * 3 + strikes_before
+                out[f"{short}_x_count_{balls_before}_{strikes_before}"] = np.where(
+                    count == key, value, np.nan
+                ).astype("float32")
+        for ph in (1, 2):
+            for bh in (1, 2):
+                out[f"{short}_x_hand_{ph}_{bh}"] = np.where(
+                    (pitcher_hand == ph) & (batter_hand == bh), value, np.nan
+                ).astype("float32")
+    return pd.DataFrame(out, index=df.index)
+
+
 def window_features(df, windows=(1, 2)):
     """직전 N개 시즌만의 성적 — `(선수, 시즌)` 조회로 끝나는 순수 상수 피처.
 

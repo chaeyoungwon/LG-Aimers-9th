@@ -1,0 +1,38 @@
+{
+  "feature": "pitcher_state_x_count_hand",
+  "formula": "5 pitcher state rates gated into 12 count + 4 hand cells",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "coverage": 0.6840678411922781,
+  "criterion": "R three folds positive and each delta > 2sigma",
+  "accepted": false,
+  "folds": [
+    {
+      "season": 2022,
+      "bss_a": 639.6545398914544,
+      "bss_b": 643.8527667138704,
+      "delta": 4.198226822416018,
+      "two_sigma": 10.470212792523359,
+      "clears_two_sigma": false
+    },
+    {
+      "season": 2023,
+      "bss_a": 652.3531914636726,
+      "bss_b": 651.8874597618795,
+      "delta": -0.4657317017930609,
+      "two_sigma": 12.455484114426099,
+      "clears_two_sigma": false
+    },
+    {
+      "season": 2024,
+      "bss_a": 743.744743057706,
+      "bss_b": 772.8384234761077,
+      "delta": 29.09368041840162,
+      "two_sigma": 11.692531361522779,
+      "clears_two_sigma": true
+    }
+  ]
+}
