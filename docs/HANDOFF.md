@@ -2,18 +2,87 @@
 
 작성 2026-08-21. 이 문서 하나만 읽으면 이어서 작업할 수 있게 쓴다.
 
+> **STATUS: CHAMPION FROZEN**
+>
+> - Champion: `artifacts/sub_tree_reblend_w0p300.zip`
+> - 구성: CatBoost 30% + LightGBM team 70%
+> - LB: `1058.074429882`
+> - SHA-256: `8ce93a197efea18cf89b7b988c59a8b369d683983152b24b74976a96885da7cb`
+> - Latest submission: 22차 two-strike, LB `1056.264418601`, **REJECTED**
+> - Current action: **FINAL SUBMISSION OPERATIONS**
+> - Active model search: **STOPPED**
+> - 최종 감사: `docs/experiments/champion-freeze.md`
+> - 제출 상태: `docs/FINAL_SUBMISSION_STATUS.md`
+
+외부 신규 데이터 없이 진행한 구조 탐색은 최종 headroom 감사 결과 deployable `+10 BSS`
+근거가 없어 종료했다. 동결 champion 자체는 계속 불변이다. 첫 축인 Cat/team conditional mixture-of-experts는 학습 전 반복성
+감사에서 기각했다. 2020~2024 expert 우위 방향이 계속 반전했고, 17개 현재-row 조건의
+전 시즌 stable-positive coverage가 모두 0%였다. selector/soft gate/stacking으로
+확대하지 않는다. 상세는 `docs/experiments/conditional-moe-screen.md`다.
+
+외부 데이터 재개 감사도 완료했다. 공식 DACON 규칙 2-3과 2026-08-21 운영진 답변은
+Phase 2 공식 제공 데이터 외 외부 데이터를 명시적으로 금지한다. KBO 선수/roster/
+일정 자료는 존재하지만 official 익명 player/team ID와 direct key가 없고, stadium은
+date/game ID가 없어 exact join도 불가능하다. 따라서 **NO ACTIONABLE EXTERNAL DATA
+AXIS / DO NOT TRAIN**이다. 수집·학습·ZIP 생성은 하지 않았으며 상세는
+`docs/experiments/external-data-reopen-audit.md`다.
+
+공식 TrackMan target-free frozen pitcher representation도 학습 전 감사했다. Repertoire
+separation과 mix entropy는 기존 mean/std profile로 잘 복원되지 않아 **PARTIALLY
+NOVEL**이지만, strict high-confidence OOF row coverage가 2022/2023/2024
+`26.35%/28.61%/30.00%`이고 cold/low-history는 0%다. 신규 factor와 champion residual
+상관은 2022·2024 모두 `|r|<=.00667`, loss 상관도 `|r|<=.01356`이며 방향이 반복되지
+않았다. 결론은 **TRACKMAN REPRESENTATION IS NOVEL BUT LOW EXPECTED VALUE / DO NOT
+TRAIN**이다. PCA/AE/mixture 모델을 실제 학습하거나 ZIP을 만들지 않았다. 상세는
+`docs/experiments/trackman-selfsupervised-reopen-audit.md`다.
+
+Regime-robust learning 재개 감사도 완료했다. Season GroupDRO는 선행 저장소에서 이미
+동일 objective, temporal OOF, eta grid, 2시드, champion blend와 subset safety까지
+검증되어 KILL됐고, leave-one-regime-out은 현재 worst-fold validation policy와 중복된다.
+Stable-feature restriction도 실제 shape-stability 분류와 stable-only 학습까지 실패했다.
+GroupDRO 0.5% champion blend는 2022/2023/2024 `+0.43/-1.47/+0.99 BSS`, stable
+additive는 `-0.76/+2.90/+1.07 BSS`로 2024 `+10` 근거가 없다. 2022·2024 공통
+취약군도 count의 약한 방향 외에는 반복되지 않았다. 결론은 **REGIME-ROBUST OBJECTIVE
+REDUNDANT — DO NOT TRAIN**이며 모델/ZIP은 만들지 않았다. 상세는
+`docs/experiments/regime-robust-reopen-audit.md`다.
+
+Architecture/representation 재개 감사도 완료했다. FT-Transformer, TabM,
+player-embedding MLP, exact train-only kNN, prototype/codebook, rank 2/4/8 pair residual
+ALS는 모두 실제 temporal OOF까지 검증돼 있다. Exact ID-aware field attention과
+DeepFM은 구현 자체는 없어 **PARTIALLY NOVEL**이지만, history `<100`, unseen matchup,
+희소 player x count는 2022·2024 모두 champion 전체보다 쉬웠다. Player x count
+interaction의 rank-4 singular energy도 pitcher `44.64%`, batter `43.42%`, 독립 시기
+효과 상관은 `.0605/.0695`뿐이다. FT residual corr도 2022·2024 `.9989` 수준이고 전
+fold standalone 악화다. 결론은 **ARCHITECTURE AXIS IS NOVEL BUT LOW EXPECTED VALUE /
+DO NOT TRAIN**, 선택 후보 `NONE`이다. 상세는
+`docs/experiments/architecture-reopen-audit.md`다.
+
+Champion recoverable-headroom 통합 감사도 완료했다. 실제 row-level OOF가 남은 16개
+prediction을 current 21차 champion과 정렬했다. Per-row oracle은 quality-filter만 써도
+2022/2024 `+3824.97/+3831.48 BSS`지만 정답을 보고 고른 **UNDEPLOYABLE** 상한이다.
+2022 winner를 2024로 넘긴 cross-fit은 `+4.34`, 반대는 `+5.75`; 사전 legal axis
+대부분은 다음 season에서 음수였다. 두 season을 모두 본 retrospective single-axis
+상한도 2024 `+3.87`이며 모든 positive route가 실제 LB `-1.8100`으로 실패한
+two-strike 하나에 의존한다. Stable route actual changed coverage는 최대 후보에서 8.88%,
+low-disagreement/high-entropy irreducible-looking proxy는 약 19.4~19.6% rows다.
+`+10/+20/+40` 및 1100 gap을 지지할 deployable evidence가 없다. 최종 판정은
+**NO MATERIAL RECOVERABLE HEADROOM — STOP MODEL SEARCH**. 21차 champion을 유지하고
+새 공식 정보/버그/+10 구조 증거 전까지 active exploration을 종료한다. 상세는
+`docs/experiments/champion-headroom-audit.md`, 산출물은 `artifacts/headroom_audit/`다.
+
 ---
 
 ## 1. 현재 위치
 
 | | 점수 | 상태 |
 | --- | ---: | --- |
-| 18차 `artifacts/submit_season_state.zip` | **1051.5537225994** | 확인된 최고 |
+| 18차 `artifacts/submit_season_state.zip` | **1051.5537225994** | 이전 최고 |
 | 19차 `artifacts/submit_full_state.zip` | **1047.5446166079** | 기각 (18차 대비 −4.0091) |
 | 20차 `artifacts/submit_stage_ours_w0p500.zip` | **1048.0613692365** | 기각 (18차 대비 −3.4924) |
 | 21차 `artifacts/sub_tree_reblend_w0p300.zip` | **1058.074429882** | 새 최고 (18차 대비 +6.5207) |
+| 22차 `artifacts/sub_two_strike_lgbcat_w0p250.zip` | **1056.264418601** | 기각 (21차 대비 −1.8100) |
 
-최종 제한 검증을 통과한 **미제출 후보**가 하나 있다:
+최종 제한 검증을 통과해 제출했지만 **실측 기각된 후보**가 하나 있다:
 
 - `artifacts/sub_two_strike_lgbcat_w0p250.zip`
 - two-strike(0-2/1-2/2-2) 안에서만 `75% champion + 25% × mean(LGB,CAT expert)`
@@ -21,17 +90,61 @@
 - seed 42/43/44 모두 2022·2024 양수, outside slice 비트 동일
 - CRC/격리 실행/3,000행 6종 독립성 통과, SHA-256
   `48add68ddd754f496256483aa41057de9612592a601f2ea18e5f445a1bfeb297`
+- 실제 LB `1056.264418601`, 21차 대비 `-1.810011281`
 - 상세 `docs/experiments/two-strike-final-expert.md`
 
-아직 LB 결과가 없으므로 21차 champion 승격은 유지한다. 후보가 LB에서 실패하면
-two-strike 설정·count 분리·weight 추가 탐색 없이 이 방향을 종료한다.
+21차 champion을 유지한다. Two-strike는 LB에서 실패했으므로 설정 변경, count 분리,
+interaction 또는 weight 추가 탐색 없이 **축을 종료**한다. 제출했던 후보 ZIP은 현재
+로컬 artifacts에 없고 builder로 재현 가능하지만 재생성·재제출 금지다.
+
+22차 실패 후 submission gate를 크게 강화한 high-margin inventory도 완료했다.
+Transformer/TabM, retrieval·prototype, reliability/shrinkage, masked pretraining,
+oblique/additive/latent representation, GroupDRO/direct-Brier 등 선행 구조 실험까지
+대조했으나, 기존 축과 중복되지 않으면서 2024 `+10 BSS`를 기대할 근거가 있는 후보는
+0개였다. 따라서 Stage 1 학습도, 새 ZIP 생성도 하지 않았다. 결론은
+**NO HIGH-MARGIN SUBMISSION CANDIDATE**이며 상세는
+`docs/experiments/high-margin-screen.md`다. 앞으로 `+1~5 BSS` 후보는 유의하더라도
+제출하지 않고, 2024 `>=+10`, `>=1.5×paired 2SE`, 2022 양수, 3시드 방향 안정성을
+모두 요구한다.
+
+### 종료 축 요약 — 재시도 방지
+
+| 실험 | 판정 | 핵심 이유 | 재시도 |
+| --- | --- | --- | --- |
+| TrackMan historical profile | REJECTED | 잔차 상관과 temporal gain 부족 | 금지 |
+| TrackMan LUPI auxiliary / distillation | REJECTED | 2023 의존, 2022·2024 악화 | 금지 |
+| TrackMan self-supervised repertoire | CLOSED | partially novel이나 strict coverage 26~30%, residual link 없음 | 금지 |
+| pitcher usage / role state | REJECTED | 2023·2024 악화, residual corr `.999764` | 금지 |
+| hierarchical empirical-Bayes | REJECTED | 2022·2024 모두 악화 | 금지 |
+| hard-example / uncertainty weighting | REJECTED | calibration 붕괴 또는 모든 fold 악화 | 금지 |
+| signed/two-strike residual specialist | CLOSED | 22차 실제 LB `-1.810011281` | 금지 |
+| forward residual LightGBM | REJECTED | residual corr `.0052`, 효과 크기 부족 | 금지 |
+| Histogram XGBoost | REJECTED | 2024 단독·5% blend 모두 악화 | 금지 |
+| 기존 NN 재혼합 | REJECTED | 모든 시즌에서 강한 tree보다 약함 | 금지 |
+| tree/stage calibration | REJECTED | 무효 또는 실제 LB 악화 | 금지 |
+| Cat/team fine weight tuning | CLOSED | 30~40% 평탄, 2024 고비중 악화 | 금지 |
+| Cat/team conditional MoE | CLOSED | expert 상대우위 비반복, 전 시즌 stable coverage 0% | 금지 |
+| `prev5-current success` | REJECTED | 2024 악화 | 금지 |
+| season-state × count/hand | REJECTED | fold·seed 방향 불안정 | 금지 |
+| two-strike 0-2/1-2/2-2 expert 전 파생 | CLOSED | 실제 LB 실패 | 재탐색·재튜닝·재제출 금지 |
+
+Two-strike의 LGB/Cat expert, ensemble, interaction, count 세분화, residual specialist,
+weight tuning을 포함해 이름이나 구성만 바꾼 파생도 다시 시도하지 않는다.
+
+### 탐색 재개 조건
+
+새 공식 데이터, 규칙/운영진 답변 변경, 데이터 해석 오류, champion 구현 버그,
+명확히 누락된 구조적 정보축, 또는 2024 `+10 BSS` 이상을 기대할 근거가 있는 완전히
+새로운 방법이 있을 때만 대규모 탐색을 검토한다. 새 알고리즘 이름, 작은 파라미터나
+blend weight 변화, 작은 slice는 재개 조건이 아니다.
 
 선두 1197 / 2위 1196 / 3위 1186 / 5위 1170대. 1100 까지 약 48점.
 
 19차는 시즌 상태 피처를 5멤버 전부(hgb·cat·nn·team·team_nn)로 넓힌 것이다.
 18차는 cat·team 두 멤버(블렌드의 약 70%)에만 들어가 있었다. 커버리지 비례로 +8을
 예상했지만 실제로는 **−4.0091**이었다. 피처가 두 멤버에서 유효하다는 사실은 다른
-멤버에도 같은 피처가 유효하다는 뜻이 아니다. **챔피언과 이후 튜닝 기준선은 18차다.**
+멤버에도 같은 피처가 유효하다는 뜻이 아니다. **19·20차 당시의 기준선은 18차였고,
+21차 이후 최종 기준선은 동결된 21차다.**
 
 빌드·검증은 끝나 있다:
 - 실행 245,789행 16초

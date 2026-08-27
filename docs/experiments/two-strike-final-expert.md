@@ -2,7 +2,9 @@
 
 실행일: 2026-08-22. Slice는 `strikes==2 and balls<3`로 동결했고 후보는 LGB,
 CatBoost, 50:50 expert 평균, inner-OOF residual specialist 네 개만 검증했다.
-결론은 **SUBMISSION CANDIDATE**이며 기존 champion ZIP은 보존했다.
+오프라인 결론은 **SUBMISSION CANDIDATE**였으나 실제 LB는 `1056.264418601`로
+21차 champion보다 `-1.810011281` 하락했다. 따라서 최종 판정은 **기각**이며
+two-strike 탐색은 종료한다. 기존 champion ZIP은 보존했다.
 
 ## A. Main comparison
 
@@ -101,7 +103,11 @@ Slice 내 C/.25 prediction mean/std는 2022 `.52352/.07029`, 2023
 
 ## H. 최종 결정
 
-**SUBMISSION CANDIDATE**
+**REJECTED BY LEADERBOARD — TWO-STRIKE SEARCH CLOSED**
+
+- 실제 LB: `1056.264418601`
+- 21차 champion LB: `1058.074429882`
+- 차이: `-1.810011281`
 
 - ZIP: `artifacts/sub_two_strike_lgbcat_w0p250.zip`
 - SHA-256: `48add68ddd754f496256483aa41057de9612592a601f2ea18e5f445a1bfeb297`
@@ -109,6 +115,7 @@ Slice 내 C/.25 prediction mean/std는 2022 `.52352/.07029`, 2023
 - isolated execution: PASS, return code 0
 - row independence max_abs_diff: `0.0`
 
-기존 `sub_tree_reblend_w0p300.zip`은 그대로 유지한다. 실제 제출 여부와 제출 행위는
-사용자가 결정한다. 이 후보가 LB에서 실패하면 two-strike search를 종료하며 다른 설정,
-count 분리, 추가 weight를 탐색하지 않는다.
+기존 `sub_tree_reblend_w0p300.zip`을 champion으로 유지한다. 제출에 사용한 후보 ZIP은
+현재 로컬 artifacts에 남아 있지 않지만 builder와 당시 SHA-256으로 재현 가능하다.
+재생성·재제출하지 않는다. 사전 약속대로 다른 Cat/LGB 설정, 0-2/1-2/2-2 분리,
+interaction, 추가 weight는 탐색하지 않는다.

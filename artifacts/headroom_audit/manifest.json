@@ -1,0 +1,150 @@
+{
+  "train": "/Users/wooh/Documents/dev/open/data/train.csv",
+  "train_sha256": "d2081186b458b49f60b082be480c273135833e15ba59a76d033af28bcf8763ff",
+  "seasons": [
+    2022,
+    2023,
+    2024
+  ],
+  "candidate_names": [
+    "champion",
+    "cat",
+    "team",
+    "hgb",
+    "nn",
+    "team_nn",
+    "ft_transformer",
+    "tabm",
+    "xgb_hist",
+    "hard_weight",
+    "uncertainty_0p5",
+    "role_state",
+    "groupdro",
+    "lupi_aux",
+    "lupi_distill",
+    "two_strike"
+  ],
+  "candidate_count": 16,
+  "no_training": true,
+  "test_read": false,
+  "minimum_legal_cell_rows": 5000,
+  "legal_axes": [
+    "game_type",
+    "count_family",
+    "pitcher_history",
+    "batter_history",
+    "hand_combo_audit",
+    "inning_phase",
+    "base_out_state",
+    "matchup_history"
+  ],
+  "stable_axis_results": [
+    {
+      "axis": "game_type",
+      "route": {
+        "R": "two_strike"
+      },
+      "bss": {
+        "2022": 5.662630151398257,
+        "2024": 1.5495794219494485
+      }
+    },
+    {
+      "axis": "count_family",
+      "route": {
+        "S=B": "two_strike"
+      },
+      "bss": {
+        "2022": 1.7642923132217616,
+        "2024": 0.10398043806859196
+      }
+    },
+    {
+      "axis": "pitcher_history",
+      "route": {
+        "500+": "two_strike"
+      },
+      "bss": {
+        "2022": 6.097806464310505,
+        "2024": 3.689137986723243
+      }
+    },
+    {
+      "axis": "batter_history",
+      "route": {
+        "500+": "two_strike"
+      },
+      "bss": {
+        "2022": 7.089187900956569,
+        "2024": 3.2949931372098136
+      }
+    },
+    {
+      "axis": "hand_combo_audit",
+      "route": {
+        "2-2": "two_strike"
+      },
+      "bss": {
+        "2022": 2.8878458637828612,
+        "2024": 3.8675648110703245
+      }
+    },
+    {
+      "axis": "inning_phase",
+      "route": {
+        "1-3": "two_strike",
+        "7+": "two_strike"
+      },
+      "bss": {
+        "2022": 4.066188759589321,
+        "2024": 3.708417054330731
+      }
+    },
+    {
+      "axis": "base_out_state",
+      "route": {
+        "___|1": "two_strike"
+      },
+      "bss": {
+        "2022": 2.510527117046823,
+        "2024": 0.30011259029095216
+      }
+    },
+    {
+      "axis": "matchup_history",
+      "route": {
+        "1-19": "two_strike",
+        "unseen": "two_strike"
+      },
+      "bss": {
+        "2022": 4.440173941934775,
+        "2024": 2.80663796361614
+      }
+    }
+  ],
+  "best_stable_single_axis": {
+    "axis": "hand_combo_audit",
+    "route": {
+      "2-2": "two_strike"
+    },
+    "bss": {
+      "2022": 2.8878458637828612,
+      "2024": 3.8675648110703245
+    }
+  },
+  "quality_candidates": [
+    "champion",
+    "cat",
+    "team",
+    "uncertainty_0p5",
+    "role_state",
+    "two_strike"
+  ],
+  "excluded_without_row_prediction": [
+    "forward_residual_lgb",
+    "trackman_profile",
+    "hierarchical_eb",
+    "stable_additive",
+    "prototype_codebook"
+  ]
+}

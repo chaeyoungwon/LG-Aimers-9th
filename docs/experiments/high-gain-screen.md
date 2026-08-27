@@ -48,10 +48,11 @@ ordered target statistics도 선수 ID의 시즌 전이 과적합을 막지 못�
 
 ## 결론
 
-이번 스크리닝에서 제출 기준을 통과한 후보는 없다. 18차
-`submit_season_state.zip`을 계속 기준선으로 유지한다. 1100점까지 약 +48.45가 남아
-있으므로 다음 단계는 메타 비중·수축 상수 조정보다, 독립적인 새 모델 계열을 롤링
-3폴드로 검증해 현재 5멤버와의 잔차 다양성을 확보하는 것이다.
+이 절의 당시 스크리닝에서는 제출 기준을 통과한 후보가 없어 18차
+`submit_season_state.zip`을 기준선으로 유지했다. 이후 이 문서 아래쪽의 tree-only
+재배합이 21차 LB `1058.074429882`를 기록해 최종 champion으로 승격됐으며, 22차와
+high-margin screening까지 끝난 현재 상태는 `docs/experiments/champion-freeze.md`가
+우선한다.
 
 ## F 최근 레짐 상수 전문가 — 기각
 
