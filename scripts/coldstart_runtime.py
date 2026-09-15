@@ -25,6 +25,25 @@ def _features(df, spec):
     return df[spec["feature_cols"]]
 
 
+def _cat_features(df, spec):
+    """CatBoost frame matching the train-only heterogeneous expert."""
+    df = df.copy()
+    df["count_state"] = (df["balls_before"] * 3 + df["strikes_before"]).astype("int8")
+    df["same_hand"] = (df["pitcher_hand"] == df["batter_hand"]).astype("int8")
+    df["late_inning"] = (df["inning"] >= 7).astype("int8")
+    df["two_strikes"] = (df["strikes_before"] == 2).astype("int8")
+    df["three_balls"] = (df["balls_before"] == 3).astype("int8")
+    df["pitcher_rate_gap_1_5"] = (df["asof_pitcher_prev1_game_success_rate"]
+                                    - df["asof_pitcher_prev5_game_success_rate"])
+    df["pitcher_rate_gap_career_5"] = (df["asof_pitcher_prev5_game_success_rate"]
+                                         - df["asof_pitcher_success_rate"])
+    for col in ("asof_pitcher_n", "asof_batter_n", "asof_pitcher_pitchmix_n"):
+        df[f"log1p_{col}"] = np.log1p(df[col].clip(lower=0))
+    for col in spec["cat_cols"]:
+        df[col] = df[col].astype("object").where(df[col].notna(), "__NA__").astype(str)
+    return df[spec["feature_cols"]]
+
+
 def apply_coldstart_expert(preds, test, model_dir):
     with open(os.path.join(model_dir, "coldstart_meta.json"), encoding="utf-8") as f:
         spec = json.load(f)
@@ -39,6 +58,14 @@ def apply_coldstart_expert(preds, test, model_dir):
             lgb.Booster(model_file=os.path.join(model_dir, filename)).predict(x)
             for filename in files
         ], axis=0)
+        cat_file = spec.get("catboost_file")
+        if cat_file:
+            from catboost import CatBoostClassifier
+            cat = CatBoostClassifier()
+            cat.load_model(os.path.join(model_dir, cat_file))
+            cat_pred = cat.predict_proba(_cat_features(test.loc[cold], spec))[:, 1]
+            share = float(spec.get("catboost_share", 0.5))
+            expert = (1.0 - share) * expert + share * cat_pred
         w = np.full(cold.sum(), float(spec["weight"]), dtype="float64")
         segment = spec.get("segment_boost")
         if segment:
