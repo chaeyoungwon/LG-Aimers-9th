@@ -1,0 +1,38 @@
+{
+  "feature": "exact_success_season_boundary",
+  "formula": "pitcher/batter success state with final prior-season label included",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "coverage": 0.8223507415130717,
+  "criterion": "R three folds positive and each delta > 2sigma",
+  "accepted": false,
+  "folds": [
+    {
+      "season": 2022,
+      "bss_a": 639.6545398914544,
+      "bss_b": 657.5764997077682,
+      "delta": 17.9219598163138,
+      "two_sigma": 8.034255639595296,
+      "clears_two_sigma": true
+    },
+    {
+      "season": 2023,
+      "bss_a": 652.3531914636726,
+      "bss_b": 654.5378809126645,
+      "delta": 2.1846894489918895,
+      "two_sigma": 9.096435421425808,
+      "clears_two_sigma": false
+    },
+    {
+      "season": 2024,
+      "bss_a": 743.744743057706,
+      "bss_b": 737.1084311556086,
+      "delta": -6.636311902097418,
+      "two_sigma": 8.463733541880272,
+      "clears_two_sigma": false
+    }
+  ]
+}

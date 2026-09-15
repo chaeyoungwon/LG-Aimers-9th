@@ -1,0 +1,14 @@
+{
+  "selected_k": 500.0,
+  "leakage_max_abs_diff": 0.0,
+  "leakage_variants": {
+    "shuffled": 0.0,
+    "reversed": 0.0,
+    "subset": 0.0,
+    "deleted": 0.0,
+    "unrelated_duplicate": 0.0
+  },
+  "logistic_run": false,
+  "stable_positive_blend": false,
+  "logistic_reason": "stopped: 2022/2024 degraded and no fixed blend improved all folds"
+}

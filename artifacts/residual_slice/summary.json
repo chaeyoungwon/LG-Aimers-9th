@@ -1,0 +1,10 @@
+{
+  "stable_slice_count": 1,
+  "stable_slices": [
+    "count_family=two_strike"
+  ],
+  "expert_tested": false,
+  "expert_reason": "diagnostic gate must pass before expert training",
+  "test_read": false,
+  "submission_created": false
+}

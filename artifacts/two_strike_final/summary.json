@@ -1,0 +1,14 @@
+{
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "weights": [
+    0.1,
+    0.25,
+    0.5
+  ],
+  "slice": "strikes == 2 and balls < 3",
+  "test_read": false
+}

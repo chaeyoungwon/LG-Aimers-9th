@@ -1,0 +1,5 @@
+submission,local_proxy_bss,local_definition,actual_lb_delta,reference
+19_full_state,8.0,coverage-proportional expectation,-4.0091059925,18th
+20_stage_w0p500,1.99,prediction-difference 2SE proxy,-3.4923533629,18th
+21_tree_reblend,31.89,2025-structure proxy,6.5207072826,18th
+22_two_strike,11.37,mean rolling 2022/2023/2024 delta BSS,-1.810011281,21st

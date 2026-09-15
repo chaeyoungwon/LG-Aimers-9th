@@ -1,0 +1,108 @@
+{
+  "test_read": false,
+  "inference_trackman": false,
+  "weights": [
+    0.025,
+    0.05,
+    0.1,
+    0.15
+  ],
+  "models": {
+    "auxiliary": {
+      "folds": [
+        {
+          "champion_brier": 0.24313201729617934,
+          "candidate_brier": 0.2440615429372324,
+          "champion_bss": 2420.734994109475,
+          "candidate_bss": 2047.6766455350237,
+          "delta_bss": -373.058348574478,
+          "two_sigma_bss": 50.24602963899225,
+          "prediction_correlation": 0.9157416989960939,
+          "residual_correlation": 0.997932906998143,
+          "season": 2022
+        },
+        {
+          "champion_brier": 0.2523470643919594,
+          "candidate_brier": 0.2518774820563682,
+          "champion_bss": -938.8264952070901,
+          "candidate_bss": -750.9935595964912,
+          "delta_bss": 187.8329356105838,
+          "two_sigma_bss": 46.799361016619024,
+          "prediction_correlation": 0.9119129831760752,
+          "residual_correlation": 0.998441967869381,
+          "season": 2023
+        },
+        {
+          "champion_brier": 0.24765471554060994,
+          "candidate_brier": 0.24894311625316826,
+          "champion_bss": 861.5498553702694,
+          "candidate_bss": 345.7912536031227,
+          "delta_bss": -515.7586017671633,
+          "two_sigma_bss": 55.49293627836942,
+          "prediction_correlation": 0.7295486629708133,
+          "residual_correlation": 0.9977239368150164,
+          "season": 2024
+        }
+      ],
+      "pooled": {
+        "champion_brier": 0.2476987176782835,
+        "candidate_brier": 0.24828994822217218,
+        "champion_bss": 911.1718553146742,
+        "candidate_bss": 674.6573416086865,
+        "delta_bss": -236.51451370604536,
+        "two_sigma_bss": 29.45782364040083,
+        "prediction_correlation": 0.8826733053731894,
+        "residual_correlation": 0.9980204364995302,
+        "champion_error_top10_candidate_brier_gain": 0.023185899211719308
+      }
+    },
+    "distillation": {
+      "folds": [
+        {
+          "champion_brier": 0.24313201729617934,
+          "candidate_brier": 0.24345368244972093,
+          "champion_bss": 2420.734994109475,
+          "candidate_bss": 2291.637026636273,
+          "delta_bss": -129.09796747323932,
+          "two_sigma_bss": 29.852636219577295,
+          "prediction_correlation": 0.9748270390611923,
+          "residual_correlation": 0.9993547078324159,
+          "season": 2022
+        },
+        {
+          "champion_brier": 0.2523470643919594,
+          "candidate_brier": 0.25325903131744587,
+          "champion_bss": -938.8264952070901,
+          "candidate_bss": -1303.6132680702917,
+          "delta_bss": -364.786772863235,
+          "two_sigma_bss": 32.7728197669584,
+          "prediction_correlation": 0.9685739422438739,
+          "residual_correlation": 0.9994294143020946,
+          "season": 2023
+        },
+        {
+          "champion_brier": 0.24765471554060994,
+          "candidate_brier": 0.24809318927035298,
+          "champion_bss": 861.5498553702694,
+          "candidate_bss": 686.0248067114161,
+          "delta_bss": -175.5250486588672,
+          "two_sigma_bss": 31.79423184894365,
+          "prediction_correlation": 0.904802056760481,
+          "residual_correlation": 0.999265136426489,
+          "season": 2024
+        }
+      ],
+      "pooled": {
+        "champion_brier": 0.2476987176782835,
+        "candidate_brier": 0.2482542002451061,
+        "champion_bss": 911.1718553146742,
+        "candidate_bss": 688.957880542529,
+        "delta_bss": -222.21397477213506,
+        "two_sigma_bss": 18.165486874621624,
+        "prediction_correlation": 0.9625984140439118,
+        "residual_correlation": 0.999339765675382,
+        "champion_error_top10_candidate_brier_gain": 0.010893557819495726
+      }
+    }
+  }
+}

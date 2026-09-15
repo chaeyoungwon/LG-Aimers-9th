@@ -1,0 +1,51 @@
+{
+  "zip": "/Users/wooh/Documents/dev/LG-Aimers-9th-feat-residual-corrections/artifacts/sub_two_strike_lgbcat_w0p250.zip",
+  "sha256": "48add68ddd754f496256483aa41057de9612592a601f2ea18e5f445a1bfeb297",
+  "crc_passed": true,
+  "crc_bad_file": null,
+  "file_count": 23,
+  "row_independence": {
+    "full": {
+      "rows": 3000,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    },
+    "single": {
+      "rows": 1,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    },
+    "shuffled": {
+      "rows": 3000,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    },
+    "reversed": {
+      "rows": 3000,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    },
+    "subset": {
+      "rows": 600,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    },
+    "unrelated_mutation": {
+      "rows": 2999,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "changed_rows": 0
+    }
+  },
+  "row_independence_max_abs_diff": 0.0,
+  "isolated_execution": {
+    "returncode": 0,
+    "output_exists": true,
+    "stderr_tail": ""
+  }
+}

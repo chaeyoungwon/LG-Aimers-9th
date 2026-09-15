@@ -1,0 +1,10 @@
+{
+  "expert_tested": true,
+  "fast_stop": null,
+  "seed_44_run": true,
+  "weights": [
+    0.1,
+    0.25,
+    0.5
+  ]
+}

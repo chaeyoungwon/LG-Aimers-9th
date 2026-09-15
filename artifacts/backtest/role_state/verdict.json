@@ -1,0 +1,48 @@
+{
+  "axis": "pitcher_usage_role_state",
+  "row_independent": true,
+  "folds": [
+    {
+      "seed_offset": 0,
+      "season": 2022,
+      "control_brier": 0.24320237137721154,
+      "candidate_brier": 0.24318927905508048,
+      "gain": 1.3092322131064149e-05
+    },
+    {
+      "seed_offset": 0,
+      "season": 2023,
+      "control_brier": 0.2525632173731848,
+      "candidate_brier": 0.2531906611236364,
+      "gain": -0.0006274437504515951
+    },
+    {
+      "seed_offset": 0,
+      "season": 2024,
+      "control_brier": 0.24766766299226767,
+      "candidate_brier": 0.24777783818923002,
+      "gain": -0.00011017519696235323
+    },
+    {
+      "seed_offset": 1,
+      "season": 2022,
+      "control_brier": 0.24319719095513773,
+      "candidate_brier": 0.2432174874713197,
+      "gain": -2.0296516181961266e-05
+    },
+    {
+      "seed_offset": 1,
+      "season": 2023,
+      "control_brier": 0.252419943474906,
+      "candidate_brier": 0.25314019159529305,
+      "gain": -0.0007202481203870681
+    },
+    {
+      "seed_offset": 1,
+      "season": 2024,
+      "control_brier": 0.2476859576156494,
+      "candidate_brier": 0.2477939823552429,
+      "gain": -0.00010802473959348191
+    }
+  ]
+}
